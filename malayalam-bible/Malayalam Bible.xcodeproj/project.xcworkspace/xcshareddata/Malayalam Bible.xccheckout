@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>96D9725F-F26E-446A-8EEE-F6980C66A87E</string>
+	<key>IDESourceControlProjectName</key>
+	<string>Malayalam Bible</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>E66DEC2BD9F3BE93268FCDE120E4CF9214EAC855</key>
+		<string>https://github.com/davidpaul0880/malayalam-bible.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>malayalam-bible/Malayalam Bible.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>E66DEC2BD9F3BE93268FCDE120E4CF9214EAC855</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/davidpaul0880/malayalam-bible.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>E66DEC2BD9F3BE93268FCDE120E4CF9214EAC855</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>E66DEC2BD9F3BE93268FCDE120E4CF9214EAC855</string>
+			<key>IDESourceControlWCCName</key>
+			<string>malayalam-bible</string>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model name="" userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="2061" systemVersion="12E55" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+    <entity name="BookMarks" representedClassName="BookMarks" syncable="YES">
+        <attribute name="bmdescription" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="bookid" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="chapter" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="createddate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="verseid" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="versetitle" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="version" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="folder" optional="YES" minCount="1" maxCount="1" deletionRule="Nullify" destinationEntity="Folder" inverseName="bookmarks" inverseEntity="Folder" syncable="YES"/>
+    </entity>
+    <entity name="ColordVerses" representedClassName="ColordVerses" syncable="YES">
+        <attribute name="bookid" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="chapter" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="colorcode" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="createddate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="verseid" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="version" optional="YES" attributeType="String" syncable="YES"/>
+    </entity>
+    <entity name="Folder" representedClassName="Folders" syncable="YES">
+        <attribute name="createddate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="folder_color" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="folder_label" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="bookmarks" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="BookMarks" inverseName="folder" inverseEntity="BookMarks" syncable="YES"/>
+        <relationship name="notes" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Notes" inverseName="folder" inverseEntity="Notes" syncable="YES"/>
+    </entity>
+    <entity name="Notes" representedClassName="Notes" syncable="YES">
+        <attribute name="bookid" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="chapter" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="createddate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="modifieddate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="notesdescription" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="verseid" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="version" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="folder" optional="YES" minCount="1" maxCount="1" deletionRule="Nullify" destinationEntity="Folder" inverseName="notes" inverseEntity="Folder" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="BookMarks" positionX="-371" positionY="-126" width="128" height="165"/>
+        <element name="ColordVerses" positionX="-333" positionY="-414" width="128" height="135"/>
+        <element name="Folder" positionX="-137" positionY="-369" width="128" height="118"/>
+        <element name="Notes" positionX="97" positionY="-130" width="128" height="165"/>
+    </elements>
+</model>

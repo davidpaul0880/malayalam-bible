@@ -1,0 +1,64 @@
+/* 
+  Localizable.strings
+  Malayalam Bible
+
+  Created by Jijo Pulikkottil on 14/12/11.
+  Copyright (c) 2011 jpulikkottil@gmail.com. All rights reserved.
+*/
+
+
+"highlighted.verses" = "Highlighed Verses";
+
+"title.bookmarks"   = "Bookmarks";
+"title.notes"   = "Notes";
+
+"Notes"          = "Notes";
+"AddToBookmark"     = "Add To Bookmark";
+"add.bookmark"      = "Add Bookmark";
+"no.bookmarks"  = "No Bookmarks Added !";
+"no.notes"  = "No Notes Added !";
+
+"bookmark.group"    = "Group";
+"bookmark.verse"    = "Verse";
+"bookmark.description"  = "Description";
+
+"action.clearall"   = "off";
+"action.copy"   = "Copy";
+"action.bookmark"   = "Bookmark";
+"action.notes"  = "Notes";
+"action.mail"   = "Mail";
+"action.sms"    = "SMS";
+"action.facebook"   = "Facebook";
+"action.twitter"    = "Twitter";
+
+"done"          = "Done";
+"Cancel"        = "Cancel";
+"email"         = "Email";
+"copy"          = "Copy";
+"MailFooter"    = "Shared via Malayalam Bible for iOS";
+
+"AppInfo"       = "About";
+"Languages"     = "Languages";
+"SelectLanguages"   = "Select Languages";
+"SearchHelp"    = "Search Help";
+"MozhiScheme"    = "Mozhi Scheme";
+
+"Primary"       = "Primary Language";
+"Secondary"     = "Secondary Language";
+
+"malayalam"  = "Malayalam";
+"english_asv"   = "English ASV";
+"english_kjv"   = "English KJV";
+"none"          = "None";
+
+
+"bookname_primarylanguage" = "പുസ്തകങ്ങൾ";
+"bookname_English"      = "Books";
+"oldbook_primarylanguage"   = "പഴയനിയമം";
+"oldbook_English"   =   "Old Testament";
+"newbook_primarylanguage"   =   "പുതിയനിയമം";
+"newbook_english"       =   "New Testament";
+"chapter_primarylanguage"   = "അദ്ധ്യായം";
+"chapter_english"       =   "Chapter";
+"chapters_primarylanguage"      = "അദ്ധ്യായങ്ങൾ";
+"chapters_english"      = "Chapters";
