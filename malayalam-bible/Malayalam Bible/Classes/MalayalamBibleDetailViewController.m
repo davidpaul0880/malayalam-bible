@@ -169,7 +169,7 @@ typedef enum ScrollDirection {
         
         if([UIDeviceHardware isIpad]){
             
-            titleNew = [NSString stringWithFormat:@"%@ - %li" ,[self.selectedBook shortName], (long)self.chapterId];
+            titleNew = [NSString stringWithFormat:@"%@ - %li of %i" ,[self.selectedBook shortName], (long)self.chapterId, self.selectedBook.numOfChapters];
             booknameWidth = 220;
             
         }
@@ -272,7 +272,7 @@ typedef enum ScrollDirection {
             UIView *chapterBtn = [[UIView alloc] init];
             //chapterBtn.backgroundColor = [UIColor redColor];
             
-            CGSize chatsize = [[NSString stringWithFormat:@" %li" ,(long)self.chapterId] sizeWithFont:fontt constrainedToSize:CGSizeMake(50, 45)];
+            CGSize chatsize = [[NSString stringWithFormat:@" %li of %i" ,(long)self.chapterId, self.selectedBook.numOfChapters] sizeWithFont:fontt constrainedToSize:CGSizeMake(50, 45)];
             
             chapterwidth = chatsize.width;
             
@@ -284,7 +284,7 @@ typedef enum ScrollDirection {
             //lblTitle.font = [UIFont boldSystemFontOfSize:8];
             lblChap.font = [UIFont boldSystemFontOfSize:14.0];
             lblChap.minimumScaleFactor = 8.0/lblChap.font.pointSize;
-            lblChap.text = [NSString stringWithFormat:@" %li" ,(long)self.chapterId];
+            lblChap.text = [NSString stringWithFormat:@" %li of %i" ,(long)self.chapterId, self.selectedBook.numOfChapters];
             lblChap.textAlignment = NSTextAlignmentRight;
             lblChap.numberOfLines  = 1;
             lblChap.backgroundColor = [UIColor clearColor];
@@ -4008,11 +4008,11 @@ typedef enum ScrollDirection {
     
     if (scrollOffset + scrollViewHeight >= scrollContentSizeHeight)
     {
-        NSLog(@"end");
+
         // then we are at the end
         [self stopAutoScroll];
         if(isFullScreen){
-            NSLog(@"end2");
+
             self.isLoaded = NO;
             [self toggleFullScreen];
            
