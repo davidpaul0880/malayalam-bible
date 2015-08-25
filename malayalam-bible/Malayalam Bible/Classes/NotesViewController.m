@@ -69,13 +69,15 @@
     self.view.backgroundColor = changedcolor;
     
     
-    
+    if([UIDeviceHardware isOS7Device]){
     self.navigationController.navigationBar.barTintColor = changedcolor;
+        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }
     self.navigationController.navigationBar.translucent = NO;
 
     
     
-    self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    
     self.navigationItem.title = NSLocalizedString(@"title.notes", @"");
 }
 

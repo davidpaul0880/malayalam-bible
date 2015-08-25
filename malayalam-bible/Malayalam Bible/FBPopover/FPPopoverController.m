@@ -9,7 +9,7 @@
 
 #import "FPPopoverController.h"
 #import "MBConstants.h"
-
+#import "UIDeviceHardware.h"
 //ivars
 @interface FPPopoverController()
 {
@@ -135,6 +135,7 @@
             [bself dismissPopoverAnimated:YES];
         }];
 
+        
         self.contentSize = CGSizeMake(kActionViewWidth, 220); //default size //+20131113 200, 300
 
         _contentView = [[FPPopoverView alloc] initWithFrame:CGRectMake(0, 0, 

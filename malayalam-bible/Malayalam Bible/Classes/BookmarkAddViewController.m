@@ -49,42 +49,45 @@
     
     if([UIDeviceHardware isOS7Device]){
         
+        
+        
+        bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        UIColor *changedcolor;
+        if (isdark ){
+            
+            changedcolor = [UIColor blackColor];
+            
+            
+            self.tableView.backgroundColor = [UIColor blackColor];
+            self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
+            
+            self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor whiteColor],UITextAttributeTextColor,
+                                                       [UIColor blackColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+            
+        }else{
+            changedcolor = [UIColor whiteColor];
+        }
+        self.view.backgroundColor = changedcolor;
+        
+        
+        
+        self.navigationController.navigationBar.barTintColor = changedcolor;
+        self.navigationController.navigationBar.translucent = NO;
+        
+        
+        
+        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+        
     }else{
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+     
+        //self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
-    
-    
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
-    UIColor *changedcolor;
-    if (isdark ){
         
-        changedcolor = [UIColor blackColor];
-        
-        
-        self.tableView.backgroundColor = [UIColor blackColor];
-        self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
-        
-        self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
-        
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor whiteColor],UITextAttributeTextColor,
-                                                   [UIColor blackColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
-        
-    }else{
-        changedcolor = [UIColor whiteColor];
-    }
-    self.view.backgroundColor = changedcolor;
-    
-    
-    
-    self.navigationController.navigationBar.barTintColor = changedcolor;
-    self.navigationController.navigationBar.translucent = NO;
-    
-    
-    
-    self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
 
     
 

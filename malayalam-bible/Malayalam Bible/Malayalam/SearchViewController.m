@@ -104,7 +104,9 @@
         
         mySearchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
         mySearchBar.showsCancelButton = YES;
-        [mySearchBar setTintColor:[UIColor blackColor]];
+        if([UIDeviceHardware isOS7Device]){
+            [mySearchBar setTintColor:[UIColor blackColor]];
+        }
         
         //+rollyValue += 45;
        
@@ -195,7 +197,7 @@
         self.tableViewSearch.backgroundColor = [UIColor blackColor];
         self.tableViewSearch.backgroundView.backgroundColor = [UIColor blackColor];
         self.tableViewSearch.sectionIndexColor = [UIColor defaultWindowColor];
-        self.tableViewSearch.sectionIndexBackgroundColor = [UIColor blackColor];
+        if ([UIDeviceHardware isOS7Device]) self.tableViewSearch.sectionIndexBackgroundColor = [UIColor blackColor];
         self.tableViewSearch.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
         
         
@@ -203,7 +205,7 @@
         self.tableViewSearch.backgroundColor = [UIColor whiteColor];
         self.tableViewSearch.backgroundView.backgroundColor = [UIColor whiteColor];
         self.tableViewSearch.sectionIndexColor = [UIColor defaultWindowColor];
-        self.tableViewSearch.sectionIndexBackgroundColor = [UIColor whiteColor];
+        if ([UIDeviceHardware isOS7Device])  self.tableViewSearch.sectionIndexBackgroundColor = [UIColor whiteColor];
         self.tableViewSearch.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
     }
     
@@ -738,8 +740,9 @@
                 [lblCount removeFromSuperview];
             }
         }
-        
-        segmentControl.tintColor = [UIColor darkGrayColor];
+        if([UIDeviceHardware isOS7Device]){
+            segmentControl.tintColor = [UIColor darkGrayColor];
+        }
     }
     
     //  control.momentary = YES;

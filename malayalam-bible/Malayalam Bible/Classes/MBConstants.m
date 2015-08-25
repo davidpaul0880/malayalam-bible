@@ -47,7 +47,7 @@ BOOL isDetailControllerVisible = YES;
     
     NSInteger colorr = [[NSUserDefaults standardUserDefaults] integerForKey:@"themecolor"];
     if(colorr == 0){
-        colorr = 5;
+        colorr = 3;
     }
     
     return [[ColorViewController arrayColors] objectAtIndex:colorr-1];

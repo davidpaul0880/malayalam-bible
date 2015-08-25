@@ -12,6 +12,7 @@
 #import "MalayalamBibleAppDelegate.h"
 #import "MBUtils.h"
 #import "ColordVerses.h"
+#import "UIDeviceHardware.h"
 
 @interface HighlightTableViewController ()
 
@@ -146,7 +147,12 @@
     self.view.backgroundColor = changedcolor;
     
     
-    self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    if([UIDeviceHardware isOS7Device]){
+        
+        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }
+
+    
     self.navigationItem.title = NSLocalizedString(@"highlighted.verses", @"");
     
 }

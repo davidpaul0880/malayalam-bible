@@ -1184,7 +1184,7 @@ typedef enum ScrollDirection {
         //noneed[self setEdgesForExtendedLayout:UIRectEdgeNone];
     }else{
         
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
     
     
@@ -1221,9 +1221,15 @@ typedef enum ScrollDirection {
     }else{
         
         //+20140929
-        UIBarButtonItem* expand = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_full.png"] landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:self action:@selector(expand:)];
+        //+20150820
+        UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
+        if (UIDeviceOrientationIsLandscape(orientation)) {
+            
+            UIBarButtonItem* expand = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_full.png"] landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:self action:@selector(expand:)];
+            
+            self.navigationItem.rightBarButtonItem = expand;
+        }
         
-        self.navigationItem.rightBarButtonItem = expand;
         
         //Adding observer to notify the language changes
         //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshList:) name:@"NotifyTableReload" object:nil];
@@ -1309,6 +1315,11 @@ typedef enum ScrollDirection {
             
         }else{
             
+            
+            MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
+            [appDelegate showMasterController];
+
+            
             self.navigationItem.rightBarButtonItem = nil;
         }
     }
@@ -1379,8 +1390,18 @@ typedef enum ScrollDirection {
 
 - (void) modeChangeDynamically{
     
+    BOOL isos7 = NO;
+    if ([UIDeviceHardware isOS7Device]) {
+        
+        isos7 = YES;
+    }
+    
     MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
-    appDelegate.window.tintColor = [UIColor defaultWindowColor];
+    if (isos7){
+        appDelegate.window.tintColor = [UIColor defaultWindowColor];
+        //+20150823
+        self.navigationItem.rightBarButtonItem.tintColor = [UIColor defaultWindowColor];
+    }
     
     UIColor *changedColor;
     
@@ -1410,22 +1431,29 @@ typedef enum ScrollDirection {
         
     }
     
-    [[UIToolbar appearance] setBarTintColor:changedColor];
+    if (isos7) [[UIToolbar appearance] setBarTintColor:changedColor];
     
     [self.view setBackgroundColor:changedColor];//+20150216
     
     self.tableViewVerses.backgroundColor = changedColor;
     self.tableViewVerses.backgroundView.backgroundColor = changedColor;
     self.tableViewVerses.sectionIndexColor = [UIColor defaultWindowColor];
-    self.tableViewVerses.sectionIndexBackgroundColor = changedColor;
+    
+    if (isos7) {
+    
+        self.tableViewVerses.sectionIndexBackgroundColor = changedColor;
+    }else{
+        self.tableViewVerses.sectionIndexTrackingBackgroundColor = changedColor;
+    }
     
     
-    self.navigationController.navigationBar.barTintColor = changedColor;
+    
+    if (isos7) self.navigationController.navigationBar.barTintColor = changedColor;
     self.navigationController.navigationBar.translucent = NO;
     self.webViewVerses.scrollView.backgroundColor = changedColor;
     
     
-    self.bottomToolBar.barTintColor = changedColor;
+    if (isos7) self.bottomToolBar.barTintColor = changedColor;
     
     [self.tableViewVerses.backgroundView setNeedsDisplay];
     [self.tableViewVerses setNeedsDisplay];
@@ -2112,8 +2140,9 @@ typedef enum ScrollDirection {
     //self.toolBarBottom.items = arrayOfTools;
     self.bottomToolBar.items = arrayOfTools;
     //[self.bottomToolBar sizeToFit];
-    
-    self.bottomToolBar.tintColor = [UIColor defaultWindowColor];
+    if ([UIDeviceHardware isOS7Device]) {
+        self.bottomToolBar.tintColor = [UIColor defaultWindowColor];
+    }
 }
 - (void) removeColorsFromDB{
     NSMutableString *versidss = [NSMutableString string];
@@ -2459,6 +2488,7 @@ typedef enum ScrollDirection {
             popover.delegate = self;
         }
         [popover setContentSize:CGSizeMake(kActionViewWidth, 220)];
+        
         [popover presentPopoverFromView:toolBarShare];
     }
     
@@ -3593,7 +3623,9 @@ typedef enum ScrollDirection {
         CGFloat ypos = [ss integerValue];
         
         toolBarShare = [[UIToolbar alloc] initWithFrame:CGRectMake(frma2.size.width-70, ypos, 70, 28)];
-        toolBarShare.tintColor = [UIColor defaultWindowColor];
+        if ([UIDeviceHardware isOS7Device]) {
+            toolBarShare.tintColor = [UIColor defaultWindowColor];
+        }
         if([UIDeviceHardware isOS7Device]){
             [toolBarShare setBarTintColor:[UIColor whiteColor]];
             
@@ -3634,6 +3666,7 @@ typedef enum ScrollDirection {
         lbl.text = txtt;
         lbl.backgroundColor = [UIColor clearColor];
         UIBarButtonItem *itemspace = [[UIBarButtonItem alloc] initWithCustomView:lbl];
+
         
         UIBarButtonItem *flexx1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
         flexx1.width = 1;
@@ -3644,7 +3677,10 @@ typedef enum ScrollDirection {
         
         toolBarShare.items = [NSArray arrayWithObjects: itemspace,itemShare,flexx3,nil];
         
-        
+        //+20150823
+        UITapGestureRecognizer *singleFingerTap = [[UITapGestureRecognizer alloc] initWithTarget:self                                               action:@selector(actionClicked:)];
+        singleFingerTap.numberOfTapsRequired = 1;
+        [toolBarShare addGestureRecognizer:singleFingerTap];
         
         if([UIDeviceHardware isOS5Device]){
             
@@ -4053,25 +4089,34 @@ typedef enum ScrollDirection {
     self.webViewVerses.alpha = 1.0;
     self.navigationController.navigationBar.alpha = 1.0;
     [self.tableViewVerses setNeedsDisplay];
-    
-    imgArrowNext.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    if ([UIDeviceHardware isOS7Device]) {
+        imgArrowNext.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
     if(imgArrowNext.alpha != .3f){
         imgArrowNext.alpha = 1.0;
     }
-    imgArrowPrevious.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    if ([UIDeviceHardware isOS7Device]) {
+        imgArrowPrevious.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
     if(imgArrowPrevious.alpha != .3f){
         imgArrowPrevious.alpha = 1.0;
     }
-    imgArrowbooks.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    if ([UIDeviceHardware isOS7Device]) {
+        imgArrowbooks.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
     imgArrowbooks.alpha = 1.0;
     
     
     if(imgArrowChapter){
-        imgArrowChapter.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+        if ([UIDeviceHardware isOS7Device]) {
+            imgArrowChapter.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+        }
         imgArrowChapter.alpha = 1.0;
     }
     MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
-    appDelegate.window.tintColor = [UIColor defaultWindowColor];
+    if ([UIDeviceHardware isOS7Device]) {
+        appDelegate.window.tintColor = [UIColor defaultWindowColor];
+    }
 }
 
 
@@ -4083,21 +4128,31 @@ typedef enum ScrollDirection {
     
     //MalayalamBibleAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
     //+rollappDelegate.window.tintColor = nil;
+    if ([UIDeviceHardware isOS7Device]) {
     
-    imgArrowNext.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+        imgArrowNext.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
+    
     if(imgArrowNext.alpha != .3f){
         imgArrowNext.alpha = 1.0;
     }
-    imgArrowPrevious.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    if ([UIDeviceHardware isOS7Device]) {
+        imgArrowPrevious.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
+    
     if(imgArrowPrevious.alpha != .3f){
         imgArrowPrevious.alpha = 1.0;
     }
-    imgArrowbooks.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    if ([UIDeviceHardware isOS7Device]) {
+        imgArrowbooks.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+    }
     imgArrowbooks.alpha = 1.0;
     
     
     if(imgArrowChapter){
-        imgArrowChapter.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+        if ([UIDeviceHardware isOS7Device]) {
+            imgArrowChapter.tintColor = [UIColor defaultWindowColor];//+20140312 appDelegate.window.tintColor;
+        }
         imgArrowChapter.alpha = 1.0;
     }
 }

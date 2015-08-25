@@ -111,7 +111,7 @@
 {
     [super viewDidLoad];
     if(![UIDeviceHardware isOS7Device]){
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        //+20150830self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
     [self changeAppearence];
     
@@ -481,7 +481,7 @@
         self.tableViewBooks.backgroundColor = [UIColor blackColor];
         self.tableViewBooks.backgroundView.backgroundColor = [UIColor blackColor];
         self.tableViewBooks.sectionIndexColor = [UIColor defaultWindowColor];
-        self.tableViewBooks.sectionIndexBackgroundColor = [UIColor clearColor];
+        if ([UIDeviceHardware isOS7Device]) self.tableViewBooks.sectionIndexBackgroundColor = [UIColor clearColor];
         self.tableViewBooks.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
         
         
@@ -504,14 +504,16 @@
         self.tableViewBooks.backgroundColor = [UIColor whiteColor];
         self.tableViewBooks.backgroundView.backgroundColor = [UIColor whiteColor];
         self.tableViewBooks.sectionIndexColor = [UIColor defaultWindowColor];
-        self.tableViewBooks.sectionIndexBackgroundColor = [UIColor clearColor];
+        if ([UIDeviceHardware isOS7Device])  self.tableViewBooks.sectionIndexBackgroundColor = [UIColor clearColor];
         self.tableViewBooks.separatorColor = [UIColor lightGrayColor];
         
-        
-        self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
+        if ([UIDeviceHardware isOS7Device]) {
+            self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
+            self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        }
         self.navigationController.navigationBar.translucent = NO;
         
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        
     }
     
    

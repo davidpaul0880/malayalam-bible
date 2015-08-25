@@ -13,7 +13,7 @@
 #import "MalayalamBibleDetailViewController.h"
 #import "MalayalamBibleAppDelegate.h"
 #import "MBConstants.h"
-
+#import "UIDeviceHardware.h"
 
 @interface BookMarkViewController ()
 
@@ -86,12 +86,17 @@
     
     
     
-    self.navigationController.navigationBar.barTintColor = changedcolor;
+    
     self.navigationController.navigationBar.translucent = NO;
 
+    if([UIDeviceHardware isOS7Device]){
+    
+        self.navigationController.navigationBar.barTintColor = changedcolor;
+        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }
     
     
-    self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    
     self.navigationItem.title = NSLocalizedString(@"title.bookmarks", @"");
     
     if(!self.isChild){
@@ -183,19 +188,19 @@
 #pragma mark - Table view data source
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section{
     
-    if(arrayBookmarks.count == 0 && arrayFolders.count == 0){
-    UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 300)];
-    lbl.textAlignment = NSTextAlignmentCenter;
-    lbl.backgroundColor = [UIColor clearColor];
+    if(section == 0 && arrayBookmarks.count == 0 && arrayFolders.count == 0 && !tableView.editing){
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 300)];
+        lbl.textAlignment = NSTextAlignmentCenter;
+        lbl.backgroundColor = [UIColor clearColor];
         bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
         if (isdark ){
             lbl.textColor = [UIColor whiteColor];
         }
-    lbl.numberOfLines = 0;
-    lbl.text = NSLocalizedString(@"no.bookmarks", @"");
-    //    UIView *fview = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 45)];
-    //    [fview setBackgroundColor:[UIColor greenColor]];
-    return  lbl;
+        lbl.numberOfLines = 0;
+        lbl.text = NSLocalizedString(@"no.bookmarks", @"");
+        //    UIView *fview = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 45)];
+        //    [fview setBackgroundColor:[UIColor greenColor]];
+        return  lbl;
     }
     return nil;
     
@@ -204,7 +209,7 @@
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
     
     
-    if(arrayBookmarks.count == 0 && arrayFolders.count == 0){
+    if(section == 0 && arrayBookmarks.count == 0 && arrayFolders.count == 0 && !tableView.editing){
         return 300;
     }
     return 0;
@@ -657,7 +662,7 @@
     
     if(validate){
         
-        
+        MBLog(@"validated");
         
         if(mode == kModeNew){
             
@@ -680,12 +685,15 @@
         if(mode == kModeNew){
             [self.tableView beginUpdates];
             
-            [self.tableView insertRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:[self.arrayFolders count]-1 inSection:1]] withRowAnimation:UITableViewRowAnimationFade];
             [self.arrayFolders addObject:folder];
+            [self.tableView insertRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:[self.arrayFolders count]-1 inSection:1]] withRowAnimation:UITableViewRowAnimationFade];
+            
+            MBLog(@"folder %@", self.arrayFolders);
+            
             [self.tableView endUpdates];
         }
         
-        
+        MBLog(@"folder,,,");
         [self.navigationController popViewControllerAnimated:YES];
         
         if(mode == kModeNew){

@@ -14,6 +14,7 @@
 #import "MBConstants.h"
 #import "UIDeviceHardware.h"
 #import "MBUtils.h"
+#import "ColorViewController.h"
 
 
 @interface MalayalamBibleAppDelegate ()
@@ -286,15 +287,15 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
     }*/
     
    
-    NSString *appColor = [def valueForKey:kStoreThemeColor];
-    
+    NSInteger appColorr = [def integerForKey:kStoreThemeColor];
+    MBLog(@"appcolor = %li", (long)appColorr);
     if([UIDeviceHardware isOS7Device]){
         
-        if(appColor){
+        if(appColorr > 0){
         
             
               
-          self.window.tintColor = [UIColor colorWithHexString:appColor];
+          self.window.tintColor =[[ColorViewController arrayColors] objectAtIndex:appColorr-1];
             
             
         }

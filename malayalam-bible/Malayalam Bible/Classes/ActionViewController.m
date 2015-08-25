@@ -98,8 +98,15 @@
             
             //aNavigationBar.autoresizingMask =	UIViewAutoresizingFlexibleWidth;
             
-            UINavigationItem *navigationItem = [[UINavigationItem alloc]
-                                                initWithTitle:self.titleiPad];
+            //UINavigationItem *navigationItem = [[UINavigationItem alloc] initWithTitle:@"jijo"];//self.titleiPad
+            UINavigationItem *navigationItem = [[UINavigationItem alloc] init];
+            UILabel *lbl = [[UILabel alloc] initWithFrame:navBarFrame];
+            lbl.text = self.titleiPad;
+            lbl.textAlignment = NSTextAlignmentCenter;
+            lbl.textColor = [UIColor blackColor];
+            navigationItem.titleView = lbl;
+           
+            
             
             //UIBarButtonItem *buttonItem = [[UIBarButtonItem alloc]initWithTitle:@"cancel" style:UIBarButtonItemStyleBordered target:self action:@selector(dismissme:)];
             

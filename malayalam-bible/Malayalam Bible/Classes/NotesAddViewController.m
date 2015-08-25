@@ -38,7 +38,7 @@
         //noneed[self setEdgesForExtendedLayout:UIRectEdgeNone];
     }else{
         
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
     
     self.textArea = [[UITextView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];

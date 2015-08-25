@@ -9,7 +9,7 @@
 #import "FolderDetailController.h"
 #import "MalayalamBibleAppDelegate.h"
 #import "MBConstants.h"
-
+#import "UIDeviceHardware.h"
 
 
 @interface FolderDetailController ()
@@ -70,12 +70,16 @@
     
     
     
-    self.navigationController.navigationBar.barTintColor = changedcolor;
+    
     self.navigationController.navigationBar.translucent = NO;
+     if([UIDeviceHardware isOS7Device]){
+    
+         self.navigationController.navigationBar.barTintColor = changedcolor;
+         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+     }
     
     
     
-    self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
     
     if(self.viewMode == kModeNew){
         self.title = @"Add Folder";
@@ -109,13 +113,14 @@
         MalayalamBibleAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
         
         NSManagedObjectContext *context =  [appDelegate managedObjectContext];
+         MBLog(@"here 0");
         self.folderD = [NSEntityDescription insertNewObjectForEntityForName:@"Folder" inManagedObjectContext:context];
         
         self.folderD.folder_label = self.activeTextField.text;
     }
-    
+    MBLog(@"here");
     if(self.folderD.folder_label.length > 0){
-        
+        MBLog(@"here insert");
         [delegatee upsertedFolder:self.folderD AndMode:self.viewMode];
     }else{
         

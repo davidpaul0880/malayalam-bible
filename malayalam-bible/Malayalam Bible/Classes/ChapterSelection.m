@@ -141,8 +141,9 @@ const CGFloat tagWidthOffset = 10.0f;
             //tagButton.titleLabel.textColor = [UIColor darkGrayColor];
             tagButton.titleLabel.font = [UIFont systemFontOfSize:FONT_SIZE];
         }
-        
-        tagButton.tintColor = [UIColor defaultWindowColor];
+        if([UIDeviceHardware isOS7Device]){
+            tagButton.tintColor = [UIColor defaultWindowColor];
+        }
        
                
         [tagButton setTitle:number forState:UIControlStateNormal];
@@ -200,7 +201,7 @@ const CGFloat tagWidthOffset = 10.0f;
     if([UIDeviceHardware isOS7Device]){
         
     }else{
-        self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
     
 }

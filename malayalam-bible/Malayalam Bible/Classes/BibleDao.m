@@ -20,6 +20,7 @@
 #import "ColordVerses.h"
 
 #import "MBUtils.h"
+#import "ColorViewController.h"
 
 const CGFloat Line_Height = 1.2;
 
@@ -781,16 +782,41 @@ const CGFloat Line_Height = 1.2;
     
     NSString *selectionClass = @"lightgray";
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
-    if(isdark){
+    /*if(isdark){
+        
+        NSInteger colorr = [[NSUserDefaults standardUserDefaults] integerForKey:@"themecolor"];
+        if (colorr == 1) {
+            selectionClass = @"red";
+        }else if (colorr == 2){
+            selectionClass = @"green";
+        }else if (colorr == 3){
+            selectionClass = @"blue";
+        }else if (colorr == 4){
+            selectionClass = @"cyan";
+        }else if (colorr == 5){
+            selectionClass = @"yellow";
+        }else if (colorr == 6){
+            selectionClass = @"magenta";
+        }else if (colorr == 7){
+            selectionClass = @"orange";
+        }else if (colorr == 8){
+            selectionClass = @"purple";
+        }else if (colorr == 9){
+            selectionClass = @"brown";
+        }else{
+            selectionClass = @"darkgray";
+        }
+        
         selectionClass = @"darkgray";
-    }
+        
+    }*/
     
     
     
     
     if(isdark){
         
-        [functions appendFormat:@" function makeBold(noteid){var el = document.getElementById(noteid);el.style.fontWeight =  'bold'; } function makeNormal(noteid){var el = document.getElementById(noteid);el.style.fontWeight = 'normal';}  function toggleSelection(fontid) {  var elem = document.getElementById(fontid); if(elem.isselected == \"yes\"){ if(elem.colorcode){elem.style.color = elem.colorcode; }else if(elem.bookmarkcolor){elem.style.background = elem.bookmarkcolor;}else{elem.style.background=\"\"; elem.isselected = \"no\"; } elem.isselected = undefined;}else{elem.isselected = \"yes\"; elem.style.background =\"%@\";} }", selectionClass];
+        [functions appendFormat:@" function makeBold(noteid){var el = document.getElementById(noteid);el.style.fontWeight =  'bold'; } function makeNormal(noteid){var el = document.getElementById(noteid);el.style.fontWeight = 'normal';}  function toggleSelection(fontid) {  var elem = document.getElementById(fontid); if(elem.isselected == \"yes\"){ elem.style.color='#e5e5e5'; if(elem.colorcode){elem.style.color = elem.colorcode; elem.style.background=\"\"; }else if(elem.bookmarkcolor){elem.style.background = elem.bookmarkcolor;}else{elem.style.background=\"\"; elem.isselected = \"no\"; } elem.isselected = undefined;}else{elem.isselected = \"yes\"; elem.style.background =\"%@\"; elem.style.color='#000000';  } }", selectionClass];
         
         [functions appendFormat:@" function selectVerse(fontid, colorvalue){ var elem = document.getElementById(fontid); elem.style.background = \"\"; elem.style.color = colorvalue;  elem.colorcode=colorvalue;elem.isselected = \"no\";} "];
         
@@ -817,20 +843,21 @@ const CGFloat Line_Height = 1.2;
     NSString *jsssource = @"";//<meta name=\"viewport\" content=\"width=device-width - 25\" />";
     
     NSUserDefaults *def = [NSUserDefaults standardUserDefaults];
-    NSString *appColor = [def valueForKey:kStoreThemeColor];
-    
-    if(appColor == nil){
+    NSInteger appColorr = [def integerForKey:kStoreThemeColor];
+    NSString *appColor = @"#000000";
+    //MBLog(@"appcolor = %li", (long)appColorr);
+    if(appColorr == 0){
         if([UIDeviceHardware isOS7Device]){
-            //MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
-            appColor = [self getHexStringForColor:[UIColor defaultWindowColor]];//[self getHexStringForColor:appDelegate.window.tintColor];//+20140312
+            
+            appColor = [self getHexStringForColor:[UIColor defaultWindowColor]];
         }else{
             appColor = @"#000000";
         }
-        //[def setValue:color1 forKey:kStoreColor1];
-        //[def synchronize];
+        
+    }else{
+        appColor = [self getHexStringForColor:[[ColorViewController arrayColors] objectAtIndex:appColorr-1]];
     }
-    
-    
+   
     NSString *bodyblack = @"";
     NSString *textColor = @"";
     NSString *hrstyle = @"hr { border: 0; height: 1px; background-image: -webkit-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); background-image: -moz-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); background-image: -ms-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); background-image: -o-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); }";

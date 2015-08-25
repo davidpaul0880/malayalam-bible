@@ -9,7 +9,7 @@
 #import <Foundation/Foundation.h>
 
 
-#define kStoreThemeColor @"ThemeColor"
+#define kStoreThemeColor @"themecolor"
 
 #define kStoreColor1 @"Color1"
 #define kStoreColor2 @"Color2"

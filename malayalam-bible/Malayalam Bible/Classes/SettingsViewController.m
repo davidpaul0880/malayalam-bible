@@ -106,8 +106,8 @@
     
     NSMutableDictionary *dictMal = [arraySettings objectAtIndex:self.switchCustomKB.tag];
     
-    
-    if(self.switchCustomKB.isOn){
+    int x = 1;//+roll
+    if(2==x && self.switchCustomKB.isOn){
         
         NSDictionary *dictMalayalamTypeChild1 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Use Custom Keyboard", @"") ,@"label", nil];
         
@@ -259,7 +259,7 @@
     
 
     NSMutableDictionary *dictMalayalamType = nil;
-    if([UIDeviceHardware isOS8Device]){
+    /*if([UIDeviceHardware isOS8Device]){
         
         self.switchCustomKB = [[UISwitch alloc] init];
         [self.switchCustomKB addTarget:self action:@selector(switchDidChange:) forControlEvents:UIControlEventValueChanged];
@@ -277,11 +277,11 @@
          dictMalayalamType = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"Malayalam Typing for Search" ,@"header",[NSArray arrayWithObjects:dictMalayalamTypeChild1, nil],  @"data",@"6", @"sectionindex", nil];
 
     }else{
-        
+     */
         NSDictionary *dictMalayalamTypeChild1 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"SearchHelp", @"") ,@"label",NSLocalizedString(@"MozhiScheme", @""), @"value", nil];
         
         dictMalayalamType = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"Malayalam Typing for Search" ,@"header",@"1", @"sectionindex",[NSArray arrayWithObjects:dictMalayalamTypeChild1, nil], @"data", nil];
-    }
+    //}
     
     
     
@@ -366,7 +366,7 @@
     [super viewDidAppear:animated];
     
     if([UIDeviceHardware isOS8Device]){
-        [self performSelectorInBackground:@selector(test) withObject:nil];
+       //+roll+20150820 [self performSelectorInBackground:@selector(test) withObject:nil];
     }
     
 }
@@ -388,7 +388,7 @@
     }
     
 
-    [[NSUserDefaults standardUserDefaults] setBool:[self.switchCustomKB isOn] forKey:kCustomKB];
+    //+roll[[NSUserDefaults standardUserDefaults] setBool:[self.switchCustomKB isOn] forKey:kCustomKB];
     
     CGFloat fontSize = [[NSUserDefaults standardUserDefaults] floatForKey:@"fontSize"];
     
@@ -445,6 +445,12 @@
     
     if(self.isThemeChanged){
         isModeChanged = YES;
+        
+        //+20150823
+        if([UIDeviceHardware isOS7Device]){
+            self.navigationItem.backBarButtonItem.tintColor = [UIColor defaultWindowColor];
+        }
+        
     }
     
     if(fontSize != FONT_SIZE || isLangChanged || isModeChanged){
@@ -829,7 +835,9 @@
         [[NSUserDefaults standardUserDefaults] setInteger:[newColor integerValue]+1 forKey:@"themecolor"];
         
         MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
-        appDelegate.window.tintColor = [[ColorViewController arrayColors] objectAtIndex:[newColor integerValue]];
+        if([UIDeviceHardware isOS7Device]){
+            appDelegate.window.tintColor = [[ColorViewController arrayColors] objectAtIndex:[newColor integerValue]];
+        }
         [appDelegate.window setNeedsDisplay];
         
         self.isThemeChanged = YES;
