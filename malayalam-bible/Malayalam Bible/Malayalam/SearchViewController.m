@@ -104,11 +104,9 @@
         
         mySearchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
         mySearchBar.showsCancelButton = YES;
-        if([UIDeviceHardware isOS7Device]){
-            [mySearchBar setTintColor:[UIColor blackColor]];
-        }
+       
         
-        //+rollyValue += 45;
+        yValue += 45;
        
     }
     
