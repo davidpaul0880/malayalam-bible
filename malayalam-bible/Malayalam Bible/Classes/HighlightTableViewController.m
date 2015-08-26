@@ -146,14 +146,27 @@
     }
     self.view.backgroundColor = changedcolor;
     
-    
+    BOOL isos7 = NO;
     if([UIDeviceHardware isOS7Device]){
-        
+        isos7 = YES;
         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
     }
 
+    //BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
     
-    self.navigationItem.title = NSLocalizedString(@"highlighted.verses", @"");
+    lblTitle.text = NSLocalizedString(@"highlighted.verses", @"");
+    
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || !isos7) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
+    //self.navigationItem.title = NSLocalizedString(@"highlighted.verses", @"");
     
 }
 

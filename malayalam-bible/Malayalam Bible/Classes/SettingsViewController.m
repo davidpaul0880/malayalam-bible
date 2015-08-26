@@ -68,7 +68,21 @@
 - (void)viewDidLoad
 {
     
-    self.title = @"Settings";
+    
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    lblTitle.text = @"Settings";
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || ![UIDeviceHardware isOS7Device]) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
+    
+    
     [super viewDidLoad];
 
     
@@ -83,7 +97,7 @@
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
     
     //+20150217
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+
     if (isdark ){
         self.tableView.backgroundColor = [UIColor blackColor];
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
@@ -106,8 +120,8 @@
     
     NSMutableDictionary *dictMal = [arraySettings objectAtIndex:self.switchCustomKB.tag];
     
-    int x = 1;//+roll
-    if(2==x && self.switchCustomKB.isOn){
+    //int x = 1;//+roll
+    if(self.switchCustomKB.isOn){
         
         NSDictionary *dictMalayalamTypeChild1 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Use Custom Keyboard", @"") ,@"label", nil];
         
@@ -115,27 +129,27 @@
         NSDictionary *dictMalayalamTypeChild2 = nil;
         NSURL *customURLv = [NSURL URLWithString:@"VaramozhiKB://"];
         
-        if([[UIApplication sharedApplication] canOpenURL:customURLv]){
+        /*if([[UIApplication sharedApplication] canOpenURL:customURLv]){
             
             dictMalayalamTypeChild2  = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Varamozhi - Installed", @"") ,@"label",customURLv,@"customURL", nil];
             
-        }else{
-            dictMalayalamTypeChild2  = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Install 'Varamozhi' for manglish keyboard", @"") ,@"label", nil];
-        }
+        }else{*/
+            dictMalayalamTypeChild2  = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Varamozhi' for manglish keyboard", @"") ,@"label", nil]; //Install
+        //}
         
         NSDictionary *dictMalayalamTypeChild3 = nil;
         NSURL *customURLe = [NSURL URLWithString:@"EasyMalayalamKB://"];
         
-        if([[UIApplication sharedApplication] canOpenURL:customURLe]){
+        /*if([[UIApplication sharedApplication] canOpenURL:customURLe]){
             
             dictMalayalamTypeChild3 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Easy Malayalam' - Installed", @"") ,@"label",customURLe,@"customURL", nil];
             
         }else{
+          */
+            dictMalayalamTypeChild3 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Easy Malayalam' for in-script keyboard", @"") ,@"label", nil];
             
-            dictMalayalamTypeChild3 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Install 'Easy Malayalam' for in-script keyboard", @"") ,@"label", nil];
             
-            
-        }
+        //}
         
         
         
@@ -259,7 +273,7 @@
     
 
     NSMutableDictionary *dictMalayalamType = nil;
-    /*if([UIDeviceHardware isOS8Device]){
+    if([UIDeviceHardware isOS8Device]){
         
         self.switchCustomKB = [[UISwitch alloc] init];
         [self.switchCustomKB addTarget:self action:@selector(switchDidChange:) forControlEvents:UIControlEventValueChanged];
@@ -277,11 +291,11 @@
          dictMalayalamType = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"Malayalam Typing for Search" ,@"header",[NSArray arrayWithObjects:dictMalayalamTypeChild1, nil],  @"data",@"6", @"sectionindex", nil];
 
     }else{
-     */
+     
         NSDictionary *dictMalayalamTypeChild1 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"SearchHelp", @"") ,@"label",NSLocalizedString(@"MozhiScheme", @""), @"value", nil];
         
         dictMalayalamType = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"Malayalam Typing for Search" ,@"header",@"1", @"sectionindex",[NSArray arrayWithObjects:dictMalayalamTypeChild1, nil], @"data", nil];
-    //}
+    }
     
     
     
@@ -366,7 +380,7 @@
     [super viewDidAppear:animated];
     
     if([UIDeviceHardware isOS8Device]){
-       //+roll+20150820 [self performSelectorInBackground:@selector(test) withObject:nil];
+       [self performSelectorInBackground:@selector(test) withObject:nil];
     }
     
 }
@@ -388,7 +402,16 @@
     }
     
 
-    //+roll[[NSUserDefaults standardUserDefaults] setBool:[self.switchCustomKB isOn] forKey:kCustomKB];
+    BOOL searchChanged = NO;
+    if ([UIDeviceHardware isOS8Device]) {
+    
+        BOOL temp = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
+        if (temp != [self.switchCustomKB isOn]) {
+            searchChanged = YES;
+        }
+        [[NSUserDefaults standardUserDefaults] setBool:[self.switchCustomKB isOn] forKey:kCustomKB];
+    }
+    
     
     CGFloat fontSize = [[NSUserDefaults standardUserDefaults] floatForKey:@"fontSize"];
     
@@ -453,10 +476,11 @@
         
     }
     
-    if(fontSize != FONT_SIZE || isLangChanged || isModeChanged){
+    if(fontSize != FONT_SIZE || isLangChanged || isModeChanged || searchChanged){
         
 
-        NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:(fontSize != FONT_SIZE) ? @"YES" : @"NO", @"fontchanged",(isLangChanged) ? @"YES" : @"NO", @"langchanged",(isModeChanged) ? @"YES" : @"NO", @"modechanged",  nil];
+        NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:(fontSize != FONT_SIZE) ? @"YES" : @"NO", @"fontchanged",(isLangChanged) ? @"YES" : @"NO", @"langchanged",(isModeChanged) ? @"YES" : @"NO", @"modechanged", (searchChanged) ? @"YES" : @"NO", @"searchChanged", nil];
+        
         [[NSNotificationCenter defaultCenter] postNotificationName:@"NotifyTableReload" object:nil userInfo:dict];
         
     }
@@ -557,6 +581,9 @@
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             
             ((FontSizeCell *)cell).lblSample.text = @"Sample Text";
+            
+            ((FontSizeCell *)cell).lblSample.backgroundColor = [UIColor clearColor];
+            
         }else if(indexconst == 4) {
             if(indexPath.row == 0){
                 cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
@@ -644,7 +671,7 @@
         
         NSInteger colorr = [[NSUserDefaults standardUserDefaults] integerForKey:@"themecolor"];
         if(colorr == 0){
-            colorr = 5;
+            colorr = 3;
         }
         
         [(UIButton *)cell.accessoryView setBackgroundColor:[[ColorViewController arrayColors] objectAtIndex:colorr-1]];
@@ -702,6 +729,9 @@
     
     NSDictionary *dict = [arraySettings objectAtIndex:indexPath.section];
     NSInteger indexconst = [[dict valueForKey:@"sectionindex"] integerValue];
+    
+    
+    MBLog(@"indexconst = %li", (long)indexconst);
     
     // Navigation logic may go here. Create and push another view controller.
     if(indexconst == 0){
@@ -763,7 +793,24 @@
     }
     else if(indexconst == 1){
         WebViewController *webViewCtrlr = [[WebViewController alloc] init];
-        webViewCtrlr.title = NSLocalizedString(@"SearchHelp", @"");
+        //webViewCtrlr.title = NSLocalizedString(@"SearchHelp", @"");
+        
+        BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        CGRect r = self.navigationController.navigationBar.frame;
+        UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+        
+        lblTitle.text = NSLocalizedString(@"SearchHelp", @"");
+        
+        lblTitle.textAlignment = NSTextAlignmentCenter;
+        lblTitle.backgroundColor = [UIColor clearColor];
+        if (isdark || ![UIDeviceHardware isOS7Device]) {
+            lblTitle.textColor = [UIColor whiteColor];
+        }else{
+            lblTitle.textColor = [UIColor blackColor];
+        }
+        webViewCtrlr.navigationItem.titleView = lblTitle;
+        
+        
         webViewCtrlr.requestURL = [[NSBundle mainBundle] pathForResource:@"lipi" ofType:@"png"];
         [self.navigationController pushViewController:webViewCtrlr animated:YES];
         /*
@@ -789,7 +836,24 @@
     }else if(indexconst == 3){
         
         Information *infoViewController = [[Information  alloc] initWithNibName:@"Information" bundle:nil];
-        infoViewController.title = NSLocalizedString(@"AppInfo", @"");
+        //infoViewController.title = NSLocalizedString(@"AppInfo", @"");
+        
+        BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        CGRect r = self.navigationController.navigationBar.frame;
+        UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+        
+        lblTitle.text = NSLocalizedString(@"AppInfo", @"");
+        
+        lblTitle.textAlignment = NSTextAlignmentCenter;
+        lblTitle.backgroundColor = [UIColor clearColor];
+        if (isdark || ![UIDeviceHardware isOS7Device]) {
+            lblTitle.textColor = [UIColor whiteColor];
+        }else{
+            lblTitle.textColor = [UIColor blackColor];
+        }
+        infoViewController.navigationItem.titleView = lblTitle;
+        
+        
         [self.navigationController pushViewController:infoViewController animated:YES];
     }
     else if(indexconst == 6){
@@ -799,9 +863,31 @@
             
             if(self.switchCustomKB.isOn){
                 
+                
+                MBLog(@"open varamozhi");
+                NSString *iTunesLink = @"itms://itunes.apple.com/app/id514987251";
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
+                
             }else{
                 WebViewController *webViewCtrlr = [[WebViewController alloc] init];
-                webViewCtrlr.title = NSLocalizedString(@"SearchHelp", @"");
+                //webViewCtrlr.title = NSLocalizedString(@"SearchHelp", @"");
+                
+                BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+                CGRect r = self.navigationController.navigationBar.frame;
+                UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+                
+                lblTitle.text = NSLocalizedString(@"SearchHelp", @"");
+                
+                lblTitle.textAlignment = NSTextAlignmentCenter;
+                lblTitle.backgroundColor = [UIColor clearColor];
+                if (isdark || ![UIDeviceHardware isOS7Device]) {
+                    lblTitle.textColor = [UIColor whiteColor];
+                }else{
+                    lblTitle.textColor = [UIColor blackColor];
+                }
+                webViewCtrlr.navigationItem.titleView = lblTitle;
+                
+                
                 webViewCtrlr.requestURL = [[NSBundle mainBundle] pathForResource:@"lipi" ofType:@"png"];
                 [self.navigationController pushViewController:webViewCtrlr animated:YES];
 
@@ -809,6 +895,9 @@
             
         }else if(indexPath.row == 2){
             
+            MBLog(@"open easy malayalam");
+            NSString *iTunesLink = @"itms://itunes.apple.com/app/id957578340";
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
         }
         
     }else if (indexconst == 7){

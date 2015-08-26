@@ -55,12 +55,25 @@ const CGFloat tagWidthOffset = 10.0f;
 -(void) configureView:(BOOL)isFromMaster{
     
     
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+
     self.fromMaster = isFromMaster;
     
-    self.title = self.selectedBook.shortName;
+    //+jjself.title = self.selectedBook.shortName;
     
-    /** Clear Screen ***/
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    lblTitle.text = self.selectedBook.shortName;
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark) {
+        lblTitle.textColor = [UIColor blackColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
+    
+    /** Clear Screen
     NSArray *existingBtns = [scrollViewBar subviews];
     int i = 0;
     for(UIView *sView in existingBtns){
@@ -70,7 +83,7 @@ const CGFloat tagWidthOffset = 10.0f;
     }
     
     [self.scrollViewBar removeFromSuperview];
-    /******/
+    *****/
     
     self.view.backgroundColor = [UIColor whiteColor];
     [scrollViewBar setFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
@@ -81,21 +94,20 @@ const CGFloat tagWidthOffset = 10.0f;
         self.lblChapter = [[UILabel alloc] initWithFrame:CGRectMake(0, 10, self.view.frame.size.width, 30)];
         
         lblChapter.text = [BibleDao getTitleChapterButton];
-        
         if(isdark){
             lblChapter.textColor = [UIColor whiteColor];
         }
         lblChapter.textAlignment = NSTextAlignmentCenter;
-        lblChapter.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+        lblChapter.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         lblChapter.tag = 10;
-        [[scrollViewBar viewWithTag:10] removeFromSuperview];
+        //[[scrollViewBar viewWithTag:10] removeFromSuperview];
         [scrollViewBar addSubview:lblChapter];
 
         yOffset = 50;
     }
     //scrollViewBar.backgroundColor = [UIColor redColor];
     if(isdark){
-        self.view.backgroundColor = [UIColor blackColor];
+        self.view.backgroundColor = [UIColor darkGrayColor];
     }
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     scrollViewBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;//UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
@@ -153,7 +165,7 @@ const CGFloat tagWidthOffset = 10.0f;
         
         [tagButton addTarget: self 
                       action: @selector(buttonClicked:) 
-            forControlEvents: UIControlEventTouchDown];
+            forControlEvents: UIControlEventTouchUpInside];
         
         [scrollViewBar addSubview:tagButton];
         
@@ -175,11 +187,11 @@ const CGFloat tagWidthOffset = 10.0f;
        
     if(self.fromMaster){
         
-       
+       /*
         UIBarButtonItem *temporaryBarButtonItem = [[UIBarButtonItem alloc] init];   
         temporaryBarButtonItem.title = [BibleDao getTitleChapterButton];//@"അദ്ധ്യായങ്ങൾ"
         self.navigationItem.backBarButtonItem = temporaryBarButtonItem;
-        
+        */
     }else{
         
         

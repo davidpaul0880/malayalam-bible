@@ -47,11 +47,13 @@
 {
     [super viewDidLoad];
     
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    BOOL isos7 = NO;
     if([UIDeviceHardware isOS7Device]){
         
+        isos7 = YES;
         
         
-        bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
         UIColor *changedcolor;
         if (isdark ){
             
@@ -63,12 +65,12 @@
             
             self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
             
-            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+            /*NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
                                                        [UIColor whiteColor],UITextAttributeTextColor,
                                                        [UIColor blackColor], UITextAttributeTextShadowColor,
                                                        [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
             [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
-            
+            */
         }else{
             changedcolor = [UIColor whiteColor];
         }
@@ -91,7 +93,21 @@
 
     
 
-    self.title = NSLocalizedString(@"add.bookmark", @"");
+    //self.title =
+    //BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    lblTitle.text = NSLocalizedString(@"add.bookmark", @"");
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || !isos7) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
+    
+    
     
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(saveClicked:)];
     

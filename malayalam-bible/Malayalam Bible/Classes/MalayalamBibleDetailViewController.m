@@ -179,7 +179,14 @@ typedef enum ScrollDirection {
         
         booknameWidth  = titlesize.width;
         //viewTitle.backgroundColor = [UIColor redColor];
-        
+        //+20150825
+        if(![UIDeviceHardware isIpad]){
+            
+            if (booknameWidth > 90) {
+                
+                booknameWidth = 90;
+            }
+        }
         
         
         [referenceBtn setFrame:CGRectMake(0, 0, booknameWidth+middle+ iconwidth, 45)];
@@ -195,6 +202,7 @@ typedef enum ScrollDirection {
         }
         
         lblTitle.text = titleNew;
+        lblTitle.backgroundColor = [UIColor clearColor];
         if([UIDeviceHardware isIpad]){
             
             lblTitle.textAlignment = NSTextAlignmentCenter;
@@ -342,9 +350,17 @@ typedef enum ScrollDirection {
             [viewTitle addSubview:chapterBtn];
         }
         
+        MBLog(@"booknameWidth = %f", booknameWidth);
+        MBLog(@"chapterwidth = %f", chapterwidth);
+        //114 49 , 41 -- 116, 51 --
+        //+20150825
         CGFloat nextPrevgap = 5.0;
         if([UIDeviceHardware isOS7Device]){
             nextPrevgap = 25.0;
+            if(![UIDeviceHardware isIpad]){
+                
+                //nextPrevgap -= (viewTitle.frame.size.width - 120);
+            }
         }
         
         UIView *alltitleView = [[UIView alloc] init];
@@ -449,8 +465,10 @@ typedef enum ScrollDirection {
         
         [alltitleView addSubview:viewTitle];
         
+        MBLog(@"total width = %f", previewframe.size.width+nextPrevgap+viewTitle.frame.size.width+nextPrevgap+nexviewframe.size.width);
+        CGFloat totWidth = previewframe.size.width+nextPrevgap+viewTitle.frame.size.width+nextPrevgap+nexviewframe.size.width;
         
-        [alltitleView setFrame:CGRectMake(0, 0, previewframe.size.width+nextPrevgap+viewTitle.frame.size.width+nextPrevgap+nexviewframe.size.width, 45)];
+        [alltitleView setFrame:CGRectMake(0, 0, totWidth, 45)];
         
         self.navigationItem.titleView = alltitleView;
         
@@ -1056,7 +1074,7 @@ typedef enum ScrollDirection {
     //CGRect rect = self.view.frame;
     self.webViewVerses = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width-tableWidth, self.view.frame.size.height-(45))];
     
-    self.webViewVerses.backgroundColor = [UIColor whiteColor];
+    
     
     if([UIDeviceHardware isOS5Device]){
         
@@ -1167,12 +1185,12 @@ typedef enum ScrollDirection {
         secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
         
     }
-    
+    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     
     //+20131114
     if([UIDeviceHardware isOS7Device]){
         
-        bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        
         if(isdark){
             self.navigationController.navigationBar.barTintColor = [UIColor blackColor];
         }else{
@@ -1186,7 +1204,11 @@ typedef enum ScrollDirection {
         
         //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
-    
+    if (isdark) {
+        self.webViewVerses.backgroundColor = [UIColor blackColor];
+    }else {
+        self.webViewVerses.backgroundColor = [UIColor whiteColor];
+    }
     
     
     //+20140617
@@ -1410,26 +1432,34 @@ typedef enum ScrollDirection {
         
         changedColor = [UIColor blackColor];
         [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
-        
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor whiteColor],UITextAttributeTextColor,
-                                                   [UIColor blackColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        /*if (isos7){
+            
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor whiteColor],UITextAttributeTextColor,
+                                                       [UIColor blackColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+
+        }*/
         
     }else{
         
         changedColor = [UIColor whiteColor];
         [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault animated:YES];
         
+         /*if (isos7){
+             NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                        [UIColor blackColor],UITextAttributeTextColor,
+                                                        [UIColor whiteColor], UITextAttributeTextShadowColor,
+                                                        [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+             [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+         }*/
         
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor blackColor],UITextAttributeTextColor,
-                                                   [UIColor whiteColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
         
     }
+    
+    self.webViewVerses.backgroundColor = changedColor;
     
     if (isos7) [[UIToolbar appearance] setBarTintColor:changedColor];
     
@@ -1441,6 +1471,7 @@ typedef enum ScrollDirection {
     
     if (isos7) {
     
+        [[UINavigationBar appearance] setTranslucent:YES];
         self.tableViewVerses.sectionIndexBackgroundColor = changedColor;
     }else{
         self.tableViewVerses.sectionIndexTrackingBackgroundColor = changedColor;
@@ -2335,7 +2366,8 @@ typedef enum ScrollDirection {
         ChapterSelection *picker = [[ChapterSelection alloc] init];
         picker.selectedBook = self.selectedBook;
         picker.selectedChapter = self.chapterId;
-        [picker configureView:NO];
+        //[picker configureView:NO];
+        picker.fromMaster = NO;
         picker.delegate = self;
         
         //if(self.popoverChapterController == nil){
@@ -2365,10 +2397,13 @@ typedef enum ScrollDirection {
         ChapterSelection *picker = [[ChapterSelection alloc] init];
         picker.selectedBook = self.selectedBook;
         picker.selectedChapter = self.chapterId;
-        [picker configureView:NO];
+        //[picker configureView:NO];
+        picker.fromMaster = NO;
         
         //picker.delegate = self;
         UINavigationController *temp = [[UINavigationController alloc] initWithRootViewController:picker];
+        
+     
         [self.navigationController presentViewController:temp animated:YES completion:nil];
         
     }
@@ -3459,36 +3494,50 @@ typedef enum ScrollDirection {
     
     self.searchController = nil;//+20131210
     
+
     BOOL isModeChanged = [[dictInfo valueForKey:@"modechanged"] boolValue];
-    if(isModeChanged){
+    
+    BOOL isLangChanged = [[dictInfo valueForKey:@"langchanged"] boolValue];
+    BOOL isFontChanged = [[dictInfo valueForKey:@"fontchanged"] boolValue];
+    
+    //BOOL isSearchChanged = [[dictInfo valueForKey:@"searchChanged"] boolValue];
+    
+    if (isModeChanged || isLangChanged || isFontChanged || dictInfo == nil) {
         
-        [self modeChangeDynamically];
-        [self configureView];
         
-    }else{
-        
-        NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
-        NSString *secondaryL = kLangNone;
-        if(dictPref !=nil ){
-            secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
+        if(isModeChanged){
             
+            [self modeChangeDynamically];
+            [self configureView];
+            
+        }else{
+            
+            NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
+            NSString *secondaryL = kLangNone;
+            if(dictPref !=nil ){
+                secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
+                
+            }
+            
+            BibleDao *bDao = [[BibleDao alloc] init];
+            
+            NSDictionary *ddict = [bDao getChapter:self.selectedBook.bookId Chapter:self.chapterId];
+            self.bVerses = [ddict valueForKey:@"verse_array"];
+            
+            NSString *fullverse = [ddict valueForKey:@"fullverse"];
+            
+            
+            self.isLoaded = NO;
+            
+            self.isWebViewLoaded = NO;
+            [self.webViewVerses loadHTMLString:fullverse  baseURL:[MBUtils getBaseURL]];
+            
+            [self.tableViewVerses reloadData];
         }
-        
-        BibleDao *bDao = [[BibleDao alloc] init];
-        
-        NSDictionary *ddict = [bDao getChapter:self.selectedBook.bookId Chapter:self.chapterId];
-        self.bVerses = [ddict valueForKey:@"verse_array"];
-        
-        NSString *fullverse = [ddict valueForKey:@"fullverse"];
-        
-        
-        self.isLoaded = NO;
-        
-        self.isWebViewLoaded = NO;
-        [self.webViewVerses loadHTMLString:fullverse  baseURL:[MBUtils getBaseURL]];
-        
-        [self.tableViewVerses reloadData];
+
     }
+    
+    
     
 }
 

@@ -72,12 +72,15 @@
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
         
         self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
+        /*if ([UIDeviceHardware isOS7Device]) {
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor whiteColor],UITextAttributeTextColor,
+                                                       [UIColor blackColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        }*/
         
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor whiteColor],UITextAttributeTextColor,
-                                                   [UIColor blackColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
          
     }else{
         changedcolor = [UIColor whiteColor];
@@ -88,16 +91,33 @@
     
     
     self.navigationController.navigationBar.translucent = NO;
-
+    BOOL isos7 = NO;
     if([UIDeviceHardware isOS7Device]){
     
+        isos7 = YES;
         self.navigationController.navigationBar.barTintColor = changedcolor;
         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
     }
     
     
     
-    self.navigationItem.title = NSLocalizedString(@"title.bookmarks", @"");
+    //BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    
+    lblTitle.text = NSLocalizedString(@"title.bookmarks", @"");
+    lblTitle.backgroundColor = [UIColor clearColor];
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    
+    if (isdark || !isos7) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
+
+    
+    //self.navigationItem.title =
     
     if(!self.isChild){
         

@@ -146,7 +146,7 @@
     
     
     
-    if(!isCustomkb && [self.primaryL isEqualToString:kLangPrimary]){
+    if([self.primaryL isEqualToString:kLangPrimary]){//!isCustomkb &&
         
         
         self.labelSearch.textAlignment = NSTextAlignmentCenter;
@@ -574,9 +574,11 @@
     if (isdark ){
         cell.backgroundColor = [UIColor blackColor];
         cell.textLabel.textColor = [UIColor whiteColor];
+        cell.textLabel.highlightedTextColor = [UIColor blackColor];
     }else{
         cell.backgroundColor = [UIColor whiteColor];
         cell.textLabel.textColor = [UIColor blackColor];
+        cell.textLabel.highlightedTextColor = [UIColor blackColor];
     }
     
     cell.accessoryType = UITableViewCellAccessoryDetailDisclosureButton;

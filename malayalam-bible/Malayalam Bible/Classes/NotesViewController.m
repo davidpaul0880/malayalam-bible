@@ -57,11 +57,16 @@
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
         
         self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-         [UIColor whiteColor],UITextAttributeTextColor,
-         [UIColor blackColor], UITextAttributeTextShadowColor,
-         [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-         [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        
+        /*if([UIDeviceHardware isOS7Device]){
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor whiteColor],UITextAttributeTextColor,
+                                                       [UIColor blackColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        }*/
+        
         
     }else{
         changedcolor = [UIColor whiteColor];
@@ -70,7 +75,7 @@
     
     
     if([UIDeviceHardware isOS7Device]){
-    self.navigationController.navigationBar.barTintColor = changedcolor;
+        self.navigationController.navigationBar.barTintColor = changedcolor;
         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
     }
     self.navigationController.navigationBar.translucent = NO;
@@ -78,7 +83,22 @@
     
     
     
-    self.navigationItem.title = NSLocalizedString(@"title.notes", @"");
+    //self.navigationItem.title = NSLocalizedString(@"title.notes", @"");
+    
+    //BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    
+    lblTitle.text = NSLocalizedString(@"title.notes", @"");
+    
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || ![UIDeviceHardware isOS7Device]) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
 }
 
 - (void)didReceiveMemoryWarning

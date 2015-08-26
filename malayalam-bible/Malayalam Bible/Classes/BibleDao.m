@@ -1182,6 +1182,7 @@ const CGFloat Line_Height = 1.2;
 }
 + (NSString *)getTitleChapterButton{
     
+    
     NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
     
     

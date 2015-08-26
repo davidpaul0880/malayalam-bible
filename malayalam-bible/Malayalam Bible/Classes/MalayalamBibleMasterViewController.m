@@ -26,12 +26,21 @@
 
 @interface MalayalamBibleMasterViewController(Private)
 
+@property(nonatomic) BOOL isLoaded;
+
 - (void) selectBook:(Book *)selectedBook AndChapter:(NSInteger)chapter AndIndexPath:(NSIndexPath *)indexPath;
 - (void) loadData;
 /***Search Controller **/
 - (void)filterContentForSearchText:(NSString*)searchText scope:(NSString*)scope;
 -(NSUInteger) getResultDataCount;   
 - (void) changeAppearence;
+@end
+
+
+@interface MalayalamBibleMasterViewController()
+
+@property(nonatomic) BOOL isLoaded;
+
 @end
 
 @implementation MalayalamBibleMasterViewController
@@ -75,7 +84,7 @@
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
-        self.title = [BibleDao getTitleBooks];
+        //+jself.title = [BibleDao getTitleBooks];
         
         self.tableViewBooks = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
         self.tableViewBooks.delegate = self;
@@ -110,9 +119,7 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    if(![UIDeviceHardware isOS7Device]){
-        //+20150830self.navigationController.navigationBar.tintColor = [UIColor blackColor];
-    }
+    
     [self changeAppearence];
     
     if([UIDeviceHardware isOS6Device]){
@@ -161,7 +168,20 @@
     //Adding observer to notify the language changes
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshList:) name:@"NotifyTableReload" object:nil];
     
-    	
+    
+    
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    lblTitle.text = [BibleDao getTitleBooks];
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || ![UIDeviceHardware isOS7Device]) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.navigationItem.titleView = lblTitle;
 }
 
 
@@ -200,7 +220,21 @@
                
         
         [self loadData];
-        self.title = [BibleDao getTitleBooks];
+        BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        CGRect r = self.navigationController.navigationBar.frame;
+        UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+        lblTitle.text = [BibleDao getTitleBooks];
+        lblTitle.textAlignment = NSTextAlignmentCenter;
+        lblTitle.backgroundColor = [UIColor clearColor];
+        if (isdark || ![UIDeviceHardware isOS7Device]) {
+            lblTitle.textColor = [UIColor whiteColor];
+        }else{
+            lblTitle.textColor = [UIColor blackColor];
+        }
+        //+jjself.navigationItem.titleView = lblTitle;
+        
+        
+       
         //NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
         [self.tableViewBooks reloadData];
         
@@ -212,18 +246,23 @@
     }
     
     
+    if (!self.isLoaded) {
+        
+        //+20120810
+        MalayalamBibleAppDelegate *appDelegate = (MalayalamBibleAppDelegate *)[[UIApplication sharedApplication] delegate];
+        
+        NSDictionary *dict = [appDelegate.savedLocation objectAtIndex:0];
+        
+        
+        NSUInteger section = [[dict objectForKey:bmBookSection] integerValue];
+        NSUInteger row = 0;//[[dict objectForKey:bmBookRow] intValue];//+20121017
+        
+        [self.tableViewBooks scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
+        [self.tableViewBooks selectRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] animated:YES scrollPosition:UITableViewScrollPositionMiddle];
+    }
     
-    //+20120810
-    MalayalamBibleAppDelegate *appDelegate = (MalayalamBibleAppDelegate *)[[UIApplication sharedApplication] delegate];
     
-    NSDictionary *dict = [appDelegate.savedLocation objectAtIndex:0];
-    
-    
-    NSUInteger section = [[dict objectForKey:bmBookSection] integerValue];
-    NSUInteger row = 0;//[[dict objectForKey:bmBookRow] intValue];//+20121017
-       
-    [self.tableViewBooks scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
-    [self.tableViewBooks selectRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] animated:YES scrollPosition:UITableViewScrollPositionMiddle];
+    self.isLoaded = YES;
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -432,7 +471,9 @@
 {
     
         // save off this level's selection to our AppDelegate
+
         [self tableViewClicked:indexPath];
+
     
 }
 
@@ -446,7 +487,24 @@
 {
     
     self.infoViewController = [[Information  alloc] initWithNibName:@"Information" bundle:nil];
-    self.infoViewController.title = @"About";
+    //self.infoViewController. title = @"About";
+    
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    CGRect r = self.navigationController.navigationBar.frame;
+    UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+    
+    lblTitle.text = @"About";
+    
+    lblTitle.textAlignment = NSTextAlignmentCenter;
+    lblTitle.backgroundColor = [UIColor clearColor];
+    if (isdark || ![UIDeviceHardware isOS7Device]) {
+        lblTitle.textColor = [UIColor whiteColor];
+    }else{
+        lblTitle.textColor = [UIColor blackColor];
+    }
+    self.infoViewController.navigationItem.titleView = lblTitle;
+
+    
     [self.navigationController pushViewController:self.infoViewController animated:YES];
 }
 /*
@@ -471,11 +529,16 @@
     if (isdark ){
         
         self.view.backgroundColor = [UIColor blackColor];
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor whiteColor],UITextAttributeTextColor,
-                                                   [UIColor blackColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        
+        /*if ([UIDeviceHardware isOS7Device]) {
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor whiteColor],UITextAttributeTextColor,
+                                                       [UIColor blackColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        }*/
+        
         
         
         self.tableViewBooks.backgroundColor = [UIColor blackColor];
@@ -485,20 +548,27 @@
         self.tableViewBooks.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
         
         
-        self.navigationController.navigationBar.barTintColor = [UIColor blackColor];
+        if ([UIDeviceHardware isOS7Device]) {
+            self.navigationController.navigationBar.barTintColor = [UIColor blackColor];
+            self.navigationController.navigationBar.tintColor = [UIColor whiteColor];
+        }
         self.navigationController.navigationBar.translucent = NO;
         
-        self.navigationController.navigationBar.tintColor = [UIColor whiteColor];
+        
 
     }else{
         
         
         self.view.backgroundColor = [UIColor whiteColor];
-        NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                   [UIColor blackColor],UITextAttributeTextColor,
-                                                   [UIColor whiteColor], UITextAttributeTextShadowColor,
-                                                   [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
-        [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        /*if ([UIDeviceHardware isOS7Device]) {
+            
+            NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                       [UIColor blackColor],UITextAttributeTextColor,
+                                                       [UIColor whiteColor], UITextAttributeTextShadowColor,
+                                                       [NSValue valueWithUIOffset:UIOffsetMake(-1, 0)], UITextAttributeTextShadowOffset, nil];
+            [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+        }*/
+        
         
         
         self.tableViewBooks.backgroundColor = [UIColor whiteColor];
@@ -539,7 +609,8 @@
                 ChapterSelection *picker = [[ChapterSelection alloc] init];
                 picker.selectedBook = selectedBook;
                 picker.indexPath = indexPath;
-                [picker configureView:YES];
+                //[picker configureView:YES];
+                picker.fromMaster = YES;
                 
                 //picker.navigationItem.backBarButtonItem.title = [BibleDao getTitleChapterButton];
                 [self.navigationController pushViewController:picker animated:YES];
@@ -606,18 +677,45 @@
         
         NSDictionary *dictInfo = [note userInfo];
         BOOL isModeChanged = [[dictInfo valueForKey:@"modechanged"] boolValue];
-        if(isModeChanged){
+        
+        BOOL isLangChanged = [[dictInfo valueForKey:@"langchanged"] boolValue];
+        BOOL isFontChanged = [[dictInfo valueForKey:@"fontchanged"] boolValue];
+        
+        ///BOOL isSearchChanged = [[dictInfo valueForKey:@"searchChanged"] boolValue];
+
+        if (isModeChanged || isLangChanged || isFontChanged || dictInfo == nil) {
             
-            [self changeAppearence];
+            
+            if(isModeChanged){
+                
+                [self changeAppearence];
+            }
+            
+            
+            [self loadData];
+            //+jself.title = [BibleDao getTitleBooks];
+            BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+            CGRect r = self.navigationController.navigationBar.frame;
+            UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+            lblTitle.text = [BibleDao getTitleBooks];
+            lblTitle.textAlignment = NSTextAlignmentCenter;
+            lblTitle.backgroundColor = [UIColor clearColor];
+            if (isdark || ![UIDeviceHardware isOS7Device]) {
+                lblTitle.textColor = [UIColor whiteColor];
+            }else{
+                lblTitle.textColor = [UIColor blackColor];
+            }
+            self.navigationItem.titleView = lblTitle;
+            
+            //NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
+            [self.tableViewBooks reloadData];
+            
+            self.isNeedReload = NO;
+
         }
         
         
-        [self loadData];
-        self.title = [BibleDao getTitleBooks];
-        //NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-        [self.tableViewBooks reloadData];
-       
-        self.isNeedReload = NO;
+    
     }
     
     
