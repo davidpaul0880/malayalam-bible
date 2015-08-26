@@ -178,8 +178,8 @@
     
     if(self.switchScroll.isOn){
         
-        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto scroll" ,@"label", nil];
-        NSString *str = [NSString stringWithFormat:@"Auto scroll speed %.2f %%", [[NSUserDefaults standardUserDefaults] floatForKey:kScrollSpeed]];
+        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto Scroll" ,@"label", nil];
+        NSString *str = [NSString stringWithFormat:@"Auto Scroll speed %.2f %%", [[NSUserDefaults standardUserDefaults] floatForKey:kScrollSpeed]];
         NSMutableDictionary *dictAutoScrollSpeed = [NSMutableDictionary dictionaryWithObjectsAndKeys:str ,@"label", nil];
         
         
@@ -187,7 +187,7 @@
         
     }else{
         
-        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto scroll" ,@"label", nil];
+        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto Scroll" ,@"label", nil];
         
         
         [dictScroll setValue:[NSArray arrayWithObjects:dictAutoScrollSwitch, nil] forKey:@"data"];
@@ -305,7 +305,7 @@
     
     
     
-    NSDictionary *dict220 = [NSDictionary dictionaryWithObjectsAndKeys:@"Night mode" ,@"label", nil];
+    NSDictionary *dict220 = [NSDictionary dictionaryWithObjectsAndKeys:@"Night Mode" ,@"label", nil];
     NSDictionary *dict22 = [NSDictionary dictionaryWithObjectsAndKeys:[NSArray arrayWithObjects:dict220, nil], @"data", @"5", @"sectionindex", nil];
     
     
@@ -320,14 +320,14 @@
     self.switchScroll.tag = 4;
     if(self.isScrollEnabled){
         
-        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto scroll" ,@"label", nil];
-        NSString *str = [NSString stringWithFormat:@"Auto scroll speed %.2f %%", [[NSUserDefaults standardUserDefaults] floatForKey:kScrollSpeed]];
+        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto Scroll" ,@"label", nil];
+        NSString *str = [NSString stringWithFormat:@"Auto Scroll speed %.2f %%", [[NSUserDefaults standardUserDefaults] floatForKey:kScrollSpeed]];
         NSMutableDictionary *dictAutoScrollSpeed = [NSMutableDictionary dictionaryWithObjectsAndKeys:str ,@"label", nil];
         
        dictAutoScroll = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"" ,@"header",@"4", @"sectionindex",[NSArray arrayWithObjects:dictAutoScrollSwitch,dictAutoScrollSpeed, nil], @"data", nil];
     }else{
         
-        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto scroll" ,@"label", nil];
+        NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto Scroll" ,@"label", nil];
        
         dictAutoScroll = [NSMutableDictionary dictionaryWithObjectsAndKeys:@"" ,@"header",@"4", @"sectionindex",[NSArray arrayWithObjects:dictAutoScrollSwitch, nil], @"data", nil];
     }

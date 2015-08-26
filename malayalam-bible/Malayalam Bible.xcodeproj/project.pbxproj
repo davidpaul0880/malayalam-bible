@@ -1054,7 +1054,7 @@
 				INFOPLIST_FILE = "Malayalam Bible/Malayalam Bible-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "0f54cfc1-ed3f-4b02-ada1-177ee0ae6859";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "822f5d12-0e21-4d0a-b195-432196fed865";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "armv7 armv7s arm64";
 				WRAPPER_EXTENSION = app;
