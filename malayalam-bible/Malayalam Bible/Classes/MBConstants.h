@@ -39,6 +39,7 @@ extern  NSString * const kBookOldTestament;
 
 extern  NSString * const kFontName;
 extern  NSString * const kNightTime;
+extern  NSString * const kAutoLock;
 extern  NSString * const kCustomKB;
 extern  NSString * const kScrollEnable;
 extern  NSString * const kScrollSpeed;

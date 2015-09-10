@@ -80,11 +80,12 @@
     UISearchBar *mySearchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(xValue, yValue, self.view.frame.size.width-xValue*2, 45)];
 	//[mySearchBar setScopeButtonTitles:[NSArray arrayWithObjects:kBookAll, kBookOldTestament, kBookNewTestament, nil]];
 	mySearchBar.delegate = self;
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if([UIDeviceHardware isOS7Device]){
         
         mySearchBar.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
         
-        bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        
         if(isdark)
         {
             [mySearchBar setBarTintColor:[UIColor blackColor]];
@@ -105,6 +106,12 @@
         mySearchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
         mySearchBar.showsCancelButton = YES;
        
+        if (isdark) {
+            [mySearchBar setBarStyle:UIBarStyleBlack];
+            
+        }else{
+            [mySearchBar setBarStyle:UIBarStyleDefault];
+        }
         
         yValue += 45;
        
@@ -143,7 +150,7 @@
     
     bool isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
     self.labelSearch = [[UILabel alloc] initWithFrame:CGRectMake(0, yValue, self.view.frame.size.width, 45)];
-    
+    self.labelSearch.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     
     
     if([self.primaryL isEqualToString:kLangPrimary]){//!isCustomkb &&
@@ -166,7 +173,7 @@
         }
         self.labelSearch.numberOfLines = 2;
         //self.labelSearch.textAlignment = UITextAlignmentCenter;
-        //self.labelSearch.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin;
+        
         if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad) {
             
             self.labelSearch.frame = CGRectMake(0, 0+yValue, self.view.frame.size.width, 45);
@@ -190,7 +197,7 @@
     self.tableViewSearch.delegate = self;
     self.tableViewSearch.dataSource = self;
     //+20150217
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+   
     if (isdark ){
         self.tableViewSearch.backgroundColor = [UIColor blackColor];
         self.tableViewSearch.backgroundView.backgroundColor = [UIColor blackColor];
@@ -635,7 +642,7 @@
         
     }
     
-    bool isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
+    BOOL isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
     
     
     if(!isCustomkb && [self.primaryL isEqualToString:kLangPrimary]){
@@ -740,9 +747,8 @@
                 [lblCount removeFromSuperview];
             }
         }
-        if([UIDeviceHardware isOS7Device]){
-            segmentControl.tintColor = [UIColor darkGrayColor];
-        }
+      
+             
     }
     
     //  control.momentary = YES;

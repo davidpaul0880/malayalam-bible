@@ -67,9 +67,28 @@ const CGFloat tagWidthOffset = 10.0f;
     lblTitle.textAlignment = NSTextAlignmentCenter;
     lblTitle.backgroundColor = [UIColor clearColor];
     if (isdark) {
-        lblTitle.textColor = [UIColor blackColor];
+        
+        
+        if ([UIDeviceHardware isOS7Device]) {
+            lblTitle.textColor = [UIColor whiteColor];
+            self.navigationController.navigationBar.barTintColor = [UIColor blackColor];
+            self.navigationController.navigationBar.tintColor = [UIColor whiteColor];
+        }else{
+            lblTitle.textColor = [UIColor whiteColor];
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }
     }else{
-        lblTitle.textColor = [UIColor blackColor];
+       
+        if ([UIDeviceHardware isOS7Device]) {
+             lblTitle.textColor = [UIColor blackColor];
+            self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
+            self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        }else{
+            lblTitle.textColor = [UIColor whiteColor];
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+            
+        }
     }
     self.navigationItem.titleView = lblTitle;
     
@@ -97,6 +116,7 @@ const CGFloat tagWidthOffset = 10.0f;
         if(isdark){
             lblChapter.textColor = [UIColor whiteColor];
         }
+        lblChapter.backgroundColor = [UIColor clearColor];
         lblChapter.textAlignment = NSTextAlignmentCenter;
         lblChapter.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         lblChapter.tag = 10;
@@ -113,7 +133,7 @@ const CGFloat tagWidthOffset = 10.0f;
     scrollViewBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;//UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
 
          
-    NSInteger width = scrollViewBar.frame.size.width;
+    NSInteger width = 0;//scrollViewBar.frame.size.width;
     UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
     if(orientation == UIInterfaceOrientationPortrait || orientation == UIInterfaceOrientationPortraitUpsideDown) {
         width = 320;

@@ -87,6 +87,13 @@
         
     }else{
      
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+            
+        }
         //self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
         

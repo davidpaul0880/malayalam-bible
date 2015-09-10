@@ -458,6 +458,7 @@
 
     if(isos7){
         CGContextFillRect(ctx, CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height));
+        CGPathRelease(contentPath);
     }else{
         
         
@@ -470,6 +471,7 @@
          CGContextSetLineCap(ctx,kCGLineCapRound);
          CGContextSetLineJoin(ctx, kCGLineJoinRound);
          CGContextStrokePath(ctx);
+        
          CGPathRelease(contentPath);
          
          //external border

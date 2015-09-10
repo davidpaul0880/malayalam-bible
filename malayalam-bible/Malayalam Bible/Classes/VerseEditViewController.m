@@ -44,11 +44,16 @@
     }
     return self;
 }
-
+- (void) viewWillAppear:(BOOL)animated{
+    
+    [super viewWillAppear:animated];
+    vtextView.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
+    vtextView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+}
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    vtextView.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
+    
     vtextView.font = [UIFont systemFontOfSize:FONT_SIZE];
     [self.view addSubview:vtextView];
 	// Do any additional setup after loading the view.
@@ -75,10 +80,13 @@
 }
 
 - (void)textViewDidChange:(UITextView *)textView{
-    
-    
- [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(onChange:) object:nil];
- [self performSelector:@selector(onChange:) withObject:nil afterDelay:1.00];
+    //+20150908
+    BOOL isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
+    if (!isCustomkb) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(onChange:) object:nil];
+        [self performSelector:@selector(onChange:) withObject:nil afterDelay:1.00];
+    }
+ 
  
  
 }

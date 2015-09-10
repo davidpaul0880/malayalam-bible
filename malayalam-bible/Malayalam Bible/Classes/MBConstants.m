@@ -30,6 +30,7 @@ NSString * const kBookOldTestament = @"Old Testament";
 
 NSString * const kFontName = @"Helvetica";
 NSString * const kNightTime = @"kNightTime";
+NSString * const kAutoLock = @"kAutoLock";
 NSString * const kCustomKB = @"kCustomKB";
 NSString * const kScrollEnable = @"kScrollEnable";
 NSString * const kScrollSpeed = @"kScrollSpeed";

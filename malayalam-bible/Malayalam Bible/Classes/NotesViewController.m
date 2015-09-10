@@ -77,6 +77,13 @@
     if([UIDeviceHardware isOS7Device]){
         self.navigationController.navigationBar.barTintColor = changedcolor;
         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }else{
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+        }
     }
     self.navigationController.navigationBar.translucent = NO;
 

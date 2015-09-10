@@ -551,6 +551,9 @@
         if ([UIDeviceHardware isOS7Device]) {
             self.navigationController.navigationBar.barTintColor = [UIColor blackColor];
             self.navigationController.navigationBar.tintColor = [UIColor whiteColor];
+        }else{
+           self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+           
         }
         self.navigationController.navigationBar.translucent = NO;
         
@@ -580,6 +583,11 @@
         if ([UIDeviceHardware isOS7Device]) {
             self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
             self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        }else{
+            
+           
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+            
         }
         self.navigationController.navigationBar.translucent = NO;
         

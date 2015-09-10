@@ -131,6 +131,7 @@
 		8FB6BFE41798ED3B00A090AA /* BookMarks.m in Sources */ = {isa = PBXBuildFile; fileRef = 8FB6BFE31798ED3B00A090AA /* BookMarks.m */; };
 		8FB6BFEA1798ED6A00A090AA /* Folders.m in Sources */ = {isa = PBXBuildFile; fileRef = 8FB6BFE91798ED6A00A090AA /* Folders.m */; };
 		8FBE3A1018660E7900D8C24D /* Toast+UIView.m in Sources */ = {isa = PBXBuildFile; fileRef = 8FBE3A0F18660E7900D8C24D /* Toast+UIView.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		8FC2C08D1B98AD0B002E76AF /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8FC2C08C1B98AD0B002E76AF /* Images.xcassets */; };
 		8FD56BC317CF996A00B25023 /* FontSizeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 8FD56BC217CF996A00B25023 /* FontSizeCell.m */; };
 		8FE6A050178B135E00D9E5A3 /* SeparatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = 8FE6A04F178B135E00D9E5A3 /* SeparatorView.m */; };
 		8FF6341117FC5AAC006C8A1B /* ios7_copy.png in Resources */ = {isa = PBXBuildFile; fileRef = 8FF6340517FC5AAC006C8A1B /* ios7_copy.png */; };
@@ -330,6 +331,7 @@
 		8FB6BFE91798ED6A00A090AA /* Folders.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Folders.m; path = Classes/Folders.m; sourceTree = "<group>"; };
 		8FBE3A0E18660E7900D8C24D /* Toast+UIView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Toast+UIView.h"; sourceTree = "<group>"; };
 		8FBE3A0F18660E7900D8C24D /* Toast+UIView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "Toast+UIView.m"; sourceTree = "<group>"; };
+		8FC2C08C1B98AD0B002E76AF /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		8FD56BC117CF996A00B25023 /* FontSizeCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FontSizeCell.h; sourceTree = "<group>"; };
 		8FD56BC217CF996A00B25023 /* FontSizeCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FontSizeCell.m; sourceTree = "<group>"; };
 		8FE6A04E178B135E00D9E5A3 /* SeparatorView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeparatorView.h; sourceTree = "<group>"; };
@@ -541,6 +543,7 @@
 				0FFE50971450636E00BC85EE /* MalayalamBibleAppDelegate.m */,
 				0FFE508E1450636E00BC85EE /* Supporting Files */,
 				0FBAE75114520F6B007718D3 /* Information.xib */,
+				8FC2C08C1B98AD0B002E76AF /* Images.xcassets */,
 			);
 			path = "Malayalam Bible";
 			sourceTree = "<group>";
@@ -788,6 +791,7 @@
 				8FB58B7C14A246D0009226AE /* Chapters.png in Resources */,
 				03DFB76E1AD680DB00B0EB25 /* Color2.png in Resources */,
 				8FB58B7D14A246D0009226AE /* next.png in Resources */,
+				8FC2C08D1B98AD0B002E76AF /* Images.xcassets in Resources */,
 				8FB58B7E14A246D0009226AE /* next@2x.png in Resources */,
 				8FB58B7F14A246D0009226AE /* previous.png in Resources */,
 				8FB58B8014A246D0009226AE /* previous@2x.png in Resources */,
@@ -1025,6 +1029,7 @@
 		0FFE50AE1450636E00BC85EE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Jeesmon Jacob (28LDT98ZTB)";
 				COMPRESS_PNG_FILES = NO;
@@ -1045,6 +1050,7 @@
 		0FFE50AF1450636E00BC85EE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Jeesmon Jacob (58V2A74LJ7)";
 				COMPRESS_PNG_FILES = NO;

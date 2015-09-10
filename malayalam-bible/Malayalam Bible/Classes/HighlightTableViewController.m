@@ -96,7 +96,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.tableView.rowHeight = 45;
+    self.tableView.rowHeight = 50;
     self.bookIdName = [[NSMutableDictionary alloc] init];
     
     //BibleDao *b = [[BibleDao alloc] init];
@@ -125,11 +125,20 @@
     self.toolbarItems = [NSArray arrayWithObjects:item1,flex1,item2,flex1, item3, flex1, item4, flex1, item5, nil];
     
     
-    
+    BOOL isos7 = NO;
+    if([UIDeviceHardware isOS7Device]){
+        isos7 = YES;
+        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }
+
     
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     UIColor *changedcolor;
     if (isdark ){
+        
+        if (!isos7) {
+            [self.navigationController.toolbar setBarStyle:UIBarStyleBlack];
+        }
         
         changedcolor = [UIColor blackColor];
         
@@ -142,16 +151,15 @@
         
         
     }else{
+        if (!isos7) {
+            [self.navigationController.toolbar setBarStyle:UIBarStyleDefault];
+        }
+
         changedcolor = [UIColor whiteColor];
     }
     self.view.backgroundColor = changedcolor;
     
-    BOOL isos7 = NO;
-    if([UIDeviceHardware isOS7Device]){
-        isos7 = YES;
-        self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
-    }
-
+    
     //BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     CGRect r = self.navigationController.navigationBar.frame;
     UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
@@ -195,7 +203,7 @@
 {
     
     ColordVerses *object = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    NSNumber *verseidNum = object.bookid;
+    NSNumber *verseidNum = object.verseid;
     
     NSMutableDictionary *dictVerseid = [NSMutableDictionary dictionaryWithObject:verseidNum forKey:@"verse_id"];
     
@@ -208,7 +216,7 @@
     
     if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         
-        
+        MBLog(@"jj verseidNum = %@,bookdetails.bookId = %i, bm.chapter = %@ ", verseidNum, bookdetails.bookId, object.chapter);
         self.detailViewController.selectedBook = bookdetails;
         self.detailViewController.chapterId = [object.chapter integerValue];
         [self.detailViewController configureView];
@@ -252,6 +260,10 @@
     if(cell == nil){
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:ident];
         
+        cell.textLabel.font = [UIFont fontWithName:kFontName size:FONT_SIZE];
+        cell.detailTextLabel.font = [UIFont fontWithName:kFontName size:(FONT_SIZE * 14 / 18)];
+       
+        
         bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
         if (isdark ){
             cell.backgroundColor = [UIColor blackColor];
@@ -268,6 +280,7 @@
         
     }
     [self configureCell:cell atIndexPath:indexPath];
+    
     return cell;
 }
 
@@ -302,7 +315,7 @@
         
         BibleDao *b = [[BibleDao alloc] init];
         Book *book = [b getBookUsingId:object.bookid.integerValue];
-        bkName = book.longName;
+        bkName = book.shortName;
     }
     NSString *str = [NSString stringWithFormat:@"%@.png", self.colorCode];
 

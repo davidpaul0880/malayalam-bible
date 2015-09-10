@@ -9,6 +9,7 @@
 #import "NotesAddViewController.h"
 #import "MalayalamBibleAppDelegate.h"
 #import "UIDeviceHardware.h"
+#import "MBConstants.h"
 
 @interface NotesAddViewController ()
 @property (nonatomic,strong) UITextView *textArea;
@@ -31,6 +32,7 @@
 - (void)viewDidLoad
 {
     
+    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if([UIDeviceHardware isOS7Device]){
         
         self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
@@ -38,7 +40,12 @@
         //noneed[self setEdgesForExtendedLayout:UIRectEdgeNone];
     }else{
         
-        //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+        }
     }
     
     self.textArea = [[UITextView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];

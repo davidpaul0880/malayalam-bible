@@ -23,11 +23,13 @@
 
 
 @property(assign) BOOL isNightMode;
+@property(assign) BOOL isAutoLockDisabled;
 @property(assign) BOOL isScrollEnabled;
 @property(nonatomic, assign) CGFloat currentSpeed;
 
 @property(nonatomic) UISwitch *switchScroll;
 @property(nonatomic) UISwitch *switchNightMode;
+@property(nonatomic) UISwitch *switchAutoLock;
 
 @property(nonatomic) UISwitch *switchCustomKB;
 @property(nonatomic) BOOL isThemeChanged;
@@ -98,6 +100,21 @@
     
     //+20150217
 
+    if([UIDeviceHardware isOS8Device]){
+        
+        if (self.switchCustomKB == nil) {
+            
+            self.switchCustomKB = [[UISwitch alloc] init];
+            [self.switchCustomKB addTarget:self action:@selector(switchDidChange:) forControlEvents:UIControlEventValueChanged];
+        }
+        
+    }
+    self.switchNightMode = [[UISwitch alloc] init];
+    self.switchAutoLock = [[UISwitch alloc] init];
+    
+    self.switchScroll = [[UISwitch alloc] init];
+    [self.switchScroll addTarget:self action:@selector(switchScrollDidChange:) forControlEvents:UIControlEventValueChanged];
+    
     if (isdark ){
         self.tableView.backgroundColor = [UIColor blackColor];
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
@@ -222,15 +239,18 @@
     [super viewWillAppear:animated];
     
     self.isNightMode = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    self.isAutoLockDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:kAutoLock];
     self.isScrollEnabled = [[NSUserDefaults standardUserDefaults] boolForKey:kScrollEnable];
     self.currentSpeed = [[NSUserDefaults standardUserDefaults] floatForKey:kScrollSpeed];
     if(self.currentSpeed < 1.0){
         self.currentSpeed = 10;
         [[NSUserDefaults standardUserDefaults] setFloat:10 forKey:kScrollSpeed];
     }
-    self.switchNightMode = [[UISwitch alloc] init];
+    
     [self.switchNightMode setOn:self.isNightMode];
-    self.switchScroll = [[UISwitch alloc] init];
+    [self.switchAutoLock setOn:self.isAutoLockDisabled];
+    
+    
     [self.switchScroll setOn:self.isScrollEnabled];
     
     NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
@@ -275,10 +295,10 @@
     NSMutableDictionary *dictMalayalamType = nil;
     if([UIDeviceHardware isOS8Device]){
         
-        self.switchCustomKB = [[UISwitch alloc] init];
-        [self.switchCustomKB addTarget:self action:@selector(switchDidChange:) forControlEvents:UIControlEventValueChanged];
         
-        bool isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
+        
+        
+        BOOL isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
         [self.switchCustomKB setOn:isCustomkb];
         self.switchCustomKB.tag = 1;
         
@@ -310,14 +330,15 @@
     
     
     
-    
+    NSDictionary *dict91 = [NSDictionary dictionaryWithObjectsAndKeys:@"Disable Auto-Lock" ,@"label", nil];
+    NSDictionary *dict9 = [NSDictionary dictionaryWithObjectsAndKeys:[NSArray arrayWithObjects:dict91, nil], @"data", @"9", @"sectionindex", nil];
     
     
     
     NSMutableDictionary *dictAutoScroll = nil;
     
-    [self.switchScroll addTarget:self action:@selector(switchScrollDidChange:) forControlEvents:UIControlEventValueChanged];
-    self.switchScroll.tag = 4;
+    
+    self.switchScroll.tag = 5;
     if(self.isScrollEnabled){
         
         NSDictionary *dictAutoScrollSwitch = [NSDictionary dictionaryWithObjectsAndKeys:@"Auto Scroll" ,@"label", nil];
@@ -340,8 +361,14 @@
     
     
     NSDictionary *dict51 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"AppInfo", @"") ,@"label",@"", @"value", nil];
+    NSDictionary *dict52 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Review in iTunes", @"") ,@"label",@"", @"value", nil];
     
-    NSDictionary *dictInfo = [NSDictionary dictionaryWithObjectsAndKeys:@"Info" ,@"header",@"3", @"sectionindex", [NSArray arrayWithObjects:dict51, nil], @"data",nil];
+    NSDictionary *dictInfo = [NSDictionary dictionaryWithObjectsAndKeys:@"Info" ,@"header",@"3", @"sectionindex", [NSArray arrayWithObjects:dict51,dict52, nil], @"data",nil];
+    
+    
+    
+    
+   // NSDictionary *dictRateMe = [NSDictionary dictionaryWithObjectsAndKeys:@"Info" ,@"header",@"8", @"sectionindex", [NSArray arrayWithObjects:dict61, nil], @"data",nil];
     
     NSUserDefaults *def = [NSUserDefaults standardUserDefaults];
     if([def valueForKey:@"easteregg"]){
@@ -363,6 +390,7 @@
     if(dict22){
         [arraySettings addObject:dict22];
     }
+    [arraySettings addObject:dict9];
     if(dictAutoScroll){
         [arraySettings addObject:dictAutoScroll];
     }
@@ -372,6 +400,10 @@
     if(dictInfo){
         [arraySettings addObject:dictInfo];
     }
+    
+        
+       // [arraySettings addObject:dictRateMe];
+    
     [self.tableView reloadData];
 }
 
@@ -438,6 +470,8 @@
        }
         
     }
+    
+    [[NSUserDefaults standardUserDefaults] setBool:[self.switchAutoLock isOn] forKey:kAutoLock];
     
     BOOL isModeChanged = NO;
     //self.isNightMode = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
@@ -564,7 +598,7 @@
         
         celltype = @"themecolor";
     }
-    else if( (indexconst == 4 && indexPath.row == 0) || indexconst == 5 || (indexconst == 6 && indexPath.row == 0)) {
+    else if( (indexconst == 4 && indexPath.row == 0) || indexconst == 5 || indexconst == 9 || (indexconst == 6 && indexPath.row == 0)) {
         
         celltype = @"autoscrollswitch";
     }else if(indexconst == 4 && indexPath.row == 1){
@@ -598,14 +632,15 @@
                 
                 if(dictData){
                     ((FontSizeCell *)cell).lblSample.text = [dictData valueForKey:@"label"];
+                    ((FontSizeCell *)cell).lblSample.backgroundColor = [UIColor clearColor];
                 }
                 
             }
             
-        }else if(indexconst == 5) {
+        }else if(indexconst == 5 || indexconst == 9) {
             cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
-            cell.accessoryView = self.switchNightMode;
+            
         }
         else if(indexconst == 6) {
             
@@ -648,8 +683,69 @@
         }
         
     }
+    
+    
+    if(indexconst == FontSizeRow) {
+        
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        
+        ((FontSizeCell *)cell).lblSample.text = @"Sample Text";
+        
+        ((FontSizeCell *)cell).lblSample.backgroundColor = [UIColor clearColor];
+        
+    }else if(indexconst == 4) {
+        if(indexPath.row == 0){
+           
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cell.accessoryView = self.switchScroll;
+        }else{
+            
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            
+            NSArray *arry = [dict valueForKey:@"data"];
+            NSDictionary *dictData = [arry objectAtIndex:indexPath.row];
+            
+            if(dictData){
+                ((FontSizeCell *)cell).lblSample.text = [dictData valueForKey:@"label"];
+            }
+            
+        }
+        
+    }
+    else if(indexconst == 5) {
+        
+        cell.accessoryView = self.switchNightMode;
+    }
+    
+    else if(indexconst == 9) {
+        
+        cell.accessoryView = self.switchAutoLock;
+    }
+    else if(indexconst == 6) {
+        
+        if(indexPath.row == 0){
+           
+            cell.accessoryView = self.switchCustomKB;
+            
+        }else{
+           
+        }
+        
+    }else if (indexconst == 7){
+        
+        
+    }
+    else{
+        
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+   
+    
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+        
+
     if (isdark ){
+        cell.backgroundColor = [UIColor darkGrayColor];
         cell.textLabel.highlightedTextColor = [UIColor blackColor];
         cell.textLabel.textColor = [UIColor whiteColor];
     }
@@ -835,26 +931,40 @@
         
     }else if(indexconst == 3){
         
-        Information *infoViewController = [[Information  alloc] initWithNibName:@"Information" bundle:nil];
-        //infoViewController.title = NSLocalizedString(@"AppInfo", @"");
-        
-        BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
-        CGRect r = self.navigationController.navigationBar.frame;
-        UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
-        
-        lblTitle.text = NSLocalizedString(@"AppInfo", @"");
-        
-        lblTitle.textAlignment = NSTextAlignmentCenter;
-        lblTitle.backgroundColor = [UIColor clearColor];
-        if (isdark || ![UIDeviceHardware isOS7Device]) {
-            lblTitle.textColor = [UIColor whiteColor];
-        }else{
-            lblTitle.textColor = [UIColor blackColor];
+        if (indexPath.row == 0) {
+            Information *infoViewController = [[Information  alloc] initWithNibName:@"Information" bundle:nil];
+            //infoViewController.title = NSLocalizedString(@"AppInfo", @"");
+            
+            BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+            CGRect r = self.navigationController.navigationBar.frame;
+            UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
+            
+            lblTitle.text = NSLocalizedString(@"AppInfo", @"");
+            
+            lblTitle.textAlignment = NSTextAlignmentCenter;
+            lblTitle.backgroundColor = [UIColor clearColor];
+            if (isdark || ![UIDeviceHardware isOS7Device]) {
+                lblTitle.textColor = [UIColor whiteColor];
+            }else{
+                lblTitle.textColor = [UIColor blackColor];
+            }
+            infoViewController.navigationItem.titleView = lblTitle;
+            
+            
+            [self.navigationController pushViewController:infoViewController animated:YES];
+        }else {
+            
+            if ([UIDeviceHardware isOS7Device]) {
+                NSString *iTunesLink = @"itms-apps://itunes.apple.com/app/id475424211";
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
+            }else{
+                NSString *iTunesLink = @"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=475424211";
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
+            }
+
         }
-        infoViewController.navigationItem.titleView = lblTitle;
         
         
-        [self.navigationController pushViewController:infoViewController animated:YES];
     }
     else if(indexconst == 6){
         
@@ -908,6 +1018,20 @@
         
         ColorViewController *controller = [[ColorViewController alloc] initWithStyle:UITableViewStylePlain SelectedColor:colorr-1 Delegate:self];
         [self.navigationController pushViewController:controller animated:YES];
+        
+    }else if (indexconst == 8){
+        
+        /*if ([UIDeviceHardware isOS7Device]) {
+            NSString *iTunesLink = @"itms-apps://itunes.apple.com/app/id475424211";
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
+        }else{
+            NSString *iTunesLink = @"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=475424211";
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:iTunesLink]];
+        }*/
+        
+        //NSString *templateReviewURLiOS8 = @"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=APP_ID&onlyLatestVersion=true&pageNumber=0&sortOrdering=1&type=Purple+Software";
+
+        
     }
   
   

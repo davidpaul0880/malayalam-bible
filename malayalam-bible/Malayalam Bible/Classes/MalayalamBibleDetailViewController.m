@@ -141,10 +141,11 @@ typedef enum ScrollDirection {
 /** To configure iPhone detail view each time **/
 - (void)configureView
 {
+    MBLog(@"book here ?");
     self.isLoaded = NO;
     // Update the user interface for the detail item.
     if (self.selectedBook) {
-        
+        MBLog(@"book here");
         if (self.chapterId < 1 || self.chapterId > self.selectedBook.numOfChapters) {
             self.chapterId = 1;
         }
@@ -406,8 +407,8 @@ typedef enum ScrollDirection {
             preView.tag = 0;
             [preView addTarget:self action:@selector(nextPrevious:) forControlEvents:UIControlEventTouchUpInside];
             
+            if(self.chapterId-1 < 1 && self.selectedBook.bookId == 1){
             
-            if(self.chapterId-1 < 1){//bookindex == 1 &&
                 preView.enabled = NO;
             }
             [alltitleView addSubview:preView];
@@ -453,7 +454,7 @@ typedef enum ScrollDirection {
             nextView.tag = 1;
             [nextView addTarget:self action:@selector(nextPrevious:) forControlEvents:UIControlEventTouchUpInside];
             
-            if(self.chapterId+1 > self.selectedBook.numOfChapters){//bookindex == 66 &&
+            if(self.chapterId+1 > self.selectedBook.numOfChapters && self.selectedBook.bookId == 66){
                 nextView.enabled = NO;
             }
             
@@ -1180,11 +1181,11 @@ typedef enum ScrollDirection {
     self.tableViewVerses.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableViewVerses.allowsSelection = NO;
     NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
-    NSString *secondaryL = kLangNone;
+    /*NSString *secondaryL = kLangNone;
     if(dictPref !=nil ){
         secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
         
-    }
+    }*/
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     
     //+20131114
@@ -1202,7 +1203,12 @@ typedef enum ScrollDirection {
         //noneed[self setEdgesForExtendedLayout:UIRectEdgeNone];
     }else{
         
-        //+20150823self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+        }
     }
     if (isdark) {
         self.webViewVerses.backgroundColor = [UIColor blackColor];
@@ -1282,6 +1288,16 @@ typedef enum ScrollDirection {
     isDetailControllerVisible = YES;
     
     [self resetLayout];
+    
+    BOOL isTimerdisable = [[NSUserDefaults standardUserDefaults] boolForKey:kAutoLock];
+    if (isTimerdisable) {
+        
+        MBLog(@"disable time");
+        [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
+    }else{
+        
+        [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
+    }
 }
 
 
@@ -1308,6 +1324,9 @@ typedef enum ScrollDirection {
                                                object:nil];
     
     [super viewWillAppear:animated];
+    
+    
+    
     
 }
 
@@ -1427,11 +1446,13 @@ typedef enum ScrollDirection {
     
     UIColor *changedColor;
     
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if (isdark ){
         
         changedColor = [UIColor blackColor];
         [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+        
+        
         /*if (isos7){
             
             
@@ -1475,6 +1496,13 @@ typedef enum ScrollDirection {
         self.tableViewVerses.sectionIndexBackgroundColor = changedColor;
     }else{
         self.tableViewVerses.sectionIndexTrackingBackgroundColor = changedColor;
+        
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+        }
     }
     
     
@@ -1668,6 +1696,8 @@ typedef enum ScrollDirection {
 - (void) moveToNext:(BOOL)isNext{
     
     MBLog(@"move ..");
+    
+    [self stopAutoScroll];
     
     BOOL isContinue = YES;
     
@@ -2777,6 +2807,7 @@ typedef enum ScrollDirection {
 - (void) openColordVerses{
     
     HighlightTableViewController *ctrlr = [[HighlightTableViewController alloc] init];
+    ctrlr.detailViewController = self;
     [self.navigationController pushViewController:ctrlr animated:YES];
     
 }
@@ -3513,11 +3544,11 @@ typedef enum ScrollDirection {
         }else{
             
             NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
-            NSString *secondaryL = kLangNone;
+            /*NSString *secondaryL = kLangNone;
             if(dictPref !=nil ){
                 secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
                 
-            }
+            }*/
             
             BibleDao *bDao = [[BibleDao alloc] init];
             
@@ -3626,14 +3657,14 @@ typedef enum ScrollDirection {
         self.arrayToMookmark = [NSMutableArray array];
     }
     
-    BOOL isSelecte = NO;
+    //BOOL isSelecte = NO;
     
     if([self.arrayToMookmark containsObject:row]){
         
         [self.arrayToMookmark removeObject:row];
     }else{
         
-        isSelecte = YES;
+        //isSelecte = YES;
         [self.arrayToMookmark addObject:row];
     }
     

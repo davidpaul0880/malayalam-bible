@@ -521,12 +521,12 @@ const CGFloat Line_Height = 1.2;
     
       
     NSString *primaryL = kLangPrimary;
-    NSString *secondaryL = kLangNone;
+    //NSString *secondaryL = kLangNone;
     
     if(dictPref !=nil ){
         
         primaryL = [dictPref valueForKey:@"primaryLanguage"];
-        secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
+        //secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
         
     }
     
@@ -1415,6 +1415,9 @@ const CGFloat Line_Height = 1.2;
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     [request setEntity:entityDesc];
     
+    //to skip Notes Folder
+    NSPredicate *pred = [NSPredicate predicateWithFormat:@"(folder_label != Notes)"];
+    [request setPredicate:pred];
     
     NSSortDescriptor *sort = [[NSSortDescriptor alloc]
                               initWithKey:@"createddate" ascending:YES];

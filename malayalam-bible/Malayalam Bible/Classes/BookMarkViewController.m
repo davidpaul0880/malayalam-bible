@@ -55,6 +55,7 @@
 {
     [super viewDidLoad];
 
+    self.tableView.rowHeight = 50;
     self.tableView.allowsSelectionDuringEditing = YES;
     // Uncomment the following line to preserve selection between presentations.
     // self.clearsSelectionOnViewWillAppear = NO;
@@ -97,6 +98,13 @@
         isos7 = YES;
         self.navigationController.navigationBar.barTintColor = changedcolor;
         self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+    }else{
+        if (isdark) {
+            self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+            
+        }else{
+            self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+        }
     }
     
     
@@ -283,6 +291,9 @@
         if (isdark ){
             cell.backgroundColor = [UIColor darkGrayColor];
         }
+        
+        cell.textLabel.font = [UIFont fontWithName:kFontName size:FONT_SIZE];
+        cell.detailTextLabel.font = [UIFont fontWithName:kFontName size:(FONT_SIZE * 14 / 18)];
     }
     
     if (isdark ){
@@ -366,7 +377,7 @@
                 
                 if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
                     
-                    
+                    MBLog(@"verseidNum = %@,bookdetails.bookId = %i, bm.chapter = %@ ", verseidNum, bookdetails.bookId, bm.chapter);
                     self.detailViewController.selectedBook = bookdetails;
                     self.detailViewController.chapterId = [bm.chapter integerValue];
                     [self.detailViewController configureView];

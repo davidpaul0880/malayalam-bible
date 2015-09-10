@@ -78,6 +78,14 @@
             isos7   = YES;
          self.navigationController.navigationBar.barTintColor = changedcolor;
          self.navigationController.navigationBar.tintColor = [UIColor defaultWindowColor];
+     }else{
+         
+         if (isdark) {
+             self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+             
+         }else{
+             self.navigationController.navigationBar.barStyle = UIBarStyleDefault;
+         }
      }
     
     
@@ -120,31 +128,46 @@
 
 - (void) saveClicked:(id)sender{
     
+    
     [self.activeTextField resignFirstResponder];
     
-    if(self.viewMode == kModeNew){
-        
-        MalayalamBibleAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-        
-        NSManagedObjectContext *context =  [appDelegate managedObjectContext];
-         MBLog(@"here 0");
-        self.folderD = [NSEntityDescription insertNewObjectForEntityForName:@"Folder" inManagedObjectContext:context];
-        
-        self.folderD.folder_label = self.activeTextField.text;
-    }
-    MBLog(@"here");
-    if(self.folderD.folder_label.length > 0){
-        MBLog(@"here insert");
-        [delegatee upsertedFolder:self.folderD AndMode:self.viewMode];
-    }else{
+    if ([@"Bookmarks" isEqualToString:self.activeTextField.text] || [@"Notes" isEqualToString:self.activeTextField.text]) {
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Bible"
-                                                        message:@"Folder name should not be empty!"
+                                                        message:@"Entered folder name is reserved. Please enter other name!"
                                                        delegate:nil
                                               cancelButtonTitle:@"OK"
                                               otherButtonTitles:nil];
         [alert show];
+        
+    }else{
+        
+        if(self.viewMode == kModeNew){
+            
+            MalayalamBibleAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
+            
+            NSManagedObjectContext *context =  [appDelegate managedObjectContext];
+            MBLog(@"here 0");
+            self.folderD = [NSEntityDescription insertNewObjectForEntityForName:@"Folder" inManagedObjectContext:context];
+            
+            self.folderD.folder_label = self.activeTextField.text;
+        }
+        MBLog(@"here");
+        if(self.folderD.folder_label.length > 0){
+            MBLog(@"here insert");
+            [delegatee upsertedFolder:self.folderD AndMode:self.viewMode];
+        }else{
+            
+            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Bible"
+                                                            message:@"Folder name should not be empty!"
+                                                           delegate:nil
+                                                  cancelButtonTitle:@"OK"
+                                                  otherButtonTitles:nil];
+            [alert show];
+        }
+
     }
+    
     
     
 }
