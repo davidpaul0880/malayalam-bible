@@ -114,6 +114,8 @@
 		0FFE50941450636E00BC85EE /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 0FFE50931450636E00BC85EE /* main.m */; };
 		0FFE50981450636E00BC85EE /* MalayalamBibleAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 0FFE50971450636E00BC85EE /* MalayalamBibleAppDelegate.m */; };
 		0FFE50BB1450744400BC85EE /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0FFE50BA1450744400BC85EE /* libsqlite3.dylib */; };
+		8F6286E71BA26DD4005AEC78 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */; };
+		8F6286E91BA26FDC005AEC78 /* work in Resources */ = {isa = PBXBuildFile; fileRef = 8F6286E81BA26FDC005AEC78 /* work */; };
 		8F62F73017D0E93B00082A1C /* TintedImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F62F72F17D0E93B00082A1C /* TintedImageView.m */; };
 		8F64F89F17A034B0007794C4 /* CellSearch.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F64F89E17A034B0007794C4 /* CellSearch.m */; };
 		8F7BD9AD1499045600205D28 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8F7BD9AB1499045600205D28 /* Localizable.strings */; };
@@ -303,6 +305,8 @@
 		0FFE50961450636E00BC85EE /* MalayalamBibleAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MalayalamBibleAppDelegate.h; sourceTree = "<group>"; };
 		0FFE50971450636E00BC85EE /* MalayalamBibleAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MalayalamBibleAppDelegate.m; sourceTree = "<group>"; };
 		0FFE50BA1450744400BC85EE /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
+		8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
+		8F6286E81BA26FDC005AEC78 /* work */ = {isa = PBXFileReference; lastKnownFileType = folder; path = work; sourceTree = "<group>"; };
 		8F62F72E17D0E93B00082A1C /* TintedImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TintedImageView.h; sourceTree = "<group>"; };
 		8F62F72F17D0E93B00082A1C /* TintedImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TintedImageView.m; sourceTree = "<group>"; };
 		8F64F89D17A034B0007794C4 /* CellSearch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CellSearch.h; sourceTree = "<group>"; };
@@ -493,6 +497,7 @@
 		0FFE50781450636E00BC85EE = {
 			isa = PBXGroup;
 			children = (
+				8F6286E81BA26FDC005AEC78 /* work */,
 				0FFE508D1450636E00BC85EE /* Malayalam Bible */,
 				0FFE50861450636E00BC85EE /* Frameworks */,
 				0FFE50841450636E00BC85EE /* Products */,
@@ -544,6 +549,7 @@
 				0FFE508E1450636E00BC85EE /* Supporting Files */,
 				0FBAE75114520F6B007718D3 /* Information.xib */,
 				8FC2C08C1B98AD0B002E76AF /* Images.xcassets */,
+				8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */,
 			);
 			path = "Malayalam Bible";
 			sourceTree = "<group>";
@@ -791,6 +797,7 @@
 				8FB58B7C14A246D0009226AE /* Chapters.png in Resources */,
 				03DFB76E1AD680DB00B0EB25 /* Color2.png in Resources */,
 				8FB58B7D14A246D0009226AE /* next.png in Resources */,
+				8F6286E91BA26FDC005AEC78 /* work in Resources */,
 				8FC2C08D1B98AD0B002E76AF /* Images.xcassets in Resources */,
 				8FB58B7E14A246D0009226AE /* next@2x.png in Resources */,
 				8FB58B7F14A246D0009226AE /* previous.png in Resources */,
@@ -826,6 +833,7 @@
 				03243B3E1733F176008CFB7F /* info@2x.png in Resources */,
 				8FF6341317FC5AAC006C8A1B /* ios7_envelope.png in Resources */,
 				8FF6341917FC5AAC006C8A1B /* ios7_readlater.png in Resources */,
+				8F6286E71BA26DD4005AEC78 /* LaunchScreen.xib in Resources */,
 				03243B3F1733F176008CFB7F /* mail.png in Resources */,
 				03547DD21A924CC300D3B53E /* fullscreen@2x.png in Resources */,
 				03243B401733F176008CFB7F /* mail@2x.png in Resources */,
