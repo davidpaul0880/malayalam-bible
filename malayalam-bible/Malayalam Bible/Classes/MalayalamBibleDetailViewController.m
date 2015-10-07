@@ -1492,7 +1492,7 @@ typedef enum ScrollDirection {
     
     if (isos7) {
     
-        [[UINavigationBar appearance] setTranslucent:YES];
+        //+20151005 crashfix [[UINavigationBar appearance] setTranslucent:YES];
         self.tableViewVerses.sectionIndexBackgroundColor = changedColor;
     }else{
         self.tableViewVerses.sectionIndexTrackingBackgroundColor = changedColor;
