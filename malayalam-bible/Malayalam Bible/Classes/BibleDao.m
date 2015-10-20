@@ -1415,8 +1415,8 @@ const CGFloat Line_Height = 1.2;
     NSFetchRequest *request = [[NSFetchRequest alloc] init];
     [request setEntity:entityDesc];
     
-    //to skip Notes Folder
-    NSPredicate *pred = [NSPredicate predicateWithFormat:@"(folder_label != Notes)"];
+    //to skip Notes Folder //+20151020 fixed crash 3.0.2
+    NSPredicate *pred = [NSPredicate predicateWithFormat:@"(folder_label != 'Notes')"];
     [request setPredicate:pred];
     
     NSSortDescriptor *sort = [[NSSortDescriptor alloc]
