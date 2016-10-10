@@ -40,12 +40,14 @@
 @synthesize  labelSearch, arrayResults, primaryL, isFirstTime, tableViewSearch, selectedBook, scopeValue, searchBarr;
 @synthesize detailViewController = _detailViewController;
 @synthesize activityView = _activityView;
+@synthesize allBtn, oldBtn, newwBtn, bookBtn;
 
 - (id)init
 {
     self = [super init];
     if (self) {
         // Custom initialization
+        self.scopeValue = 3;
     }
     return self;
 }
@@ -273,9 +275,7 @@
     if(![UIDeviceHardware isOS7Device]){
     self.navigationController.navigationBarHidden = YES;
     }
-    if(searchBarr.text == nil || [searchBarr.text isEqualToString:@""]){
-        [searchBarr becomeFirstResponder];
-    }
+    
     /*
 	 Hide the search bar
 	 */
@@ -299,7 +299,9 @@
     }
     //self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
     //self.navigationController.toolbarHidden = YES;
-    
+    if(searchBarr.text == nil || [searchBarr.text isEqualToString:@""]){
+        [searchBarr becomeFirstResponder];
+    }
     
 }
 
@@ -729,44 +731,125 @@
     }
     
 }
+- (UIImage *)imageFromColor:(UIColor *)color {
+    CGRect rect = CGRectMake(0, 0, 1, 1);
+    UIGraphicsBeginImageContext(rect.size);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextSetFillColorWithColor(context, [color CGColor]);
+    CGContextFillRect(context, rect);
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
 - (BOOL)searchBarShouldBeginEditing:(UISearchBar *)searchBar{
     
+    UIImage *selectedBackgroundImage = [self imageFromColor:[UIColor whiteColor]];
+    //UIImage *normalBackgroundImage = [self imageFromColor:[UIColor whiteColor]];
+    
+    UIButton *all = [UIButton buttonWithType:UIButtonTypeCustom];
+    [all setTitle:@"All" forState:UIControlStateNormal];
+    [all setTitleColor:[UIColor defaultWindowColor] forState:UIControlStateSelected];
+    [all setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    all.tag = 0;
+    [all addTarget:self action:@selector(segementClicked:) forControlEvents:UIControlEventTouchUpInside];
+    self.allBtn = all;
+    CGRect frame = all.frame;
+    frame.size = CGSizeMake(50, 38);
+    all.frame = frame;
+    all.autoresizingMask = UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleLeftMargin;
+    //all.frame = CGRectMake(1, 1, 50, 38);
+    
+    [all setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
+    [all setBackgroundImage:nil forState:UIControlStateNormal];
+    
+    UIBarButtonItem *allbutton = [[UIBarButtonItem alloc] initWithCustomView:all];
+    
+
+    
+    UIButton *old = [UIButton buttonWithType:UIButtonTypeCustom];
+    [old setTitle:@"Old" forState:UIControlStateNormal];
+    [old setTitleColor:[UIColor defaultWindowColor] forState:UIControlStateSelected];
+    [old setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    old.tag = 1;
+    [old addTarget:self action:@selector(segementClicked:) forControlEvents:UIControlEventTouchUpInside];
+    self.oldBtn = old;
+    
+    CGRect frame2 = old.frame;
+    frame2.size = CGSizeMake(50, 38);
+    old.frame = frame2;
+    old.autoresizingMask = UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleLeftMargin;
+    //old.frame = CGRectMake(52, 1, 50, 38);
+    
+    [old setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
+    [old setBackgroundImage:nil forState:UIControlStateNormal];
+    
+    UIBarButtonItem *oldbutton = [[UIBarButtonItem alloc] initWithCustomView:old];
     
     
-    UISegmentedControl *segmentControl = [[UISegmentedControl alloc] initWithItems:[NSArray   arrayWithObjects:@"All",@"Old", @"New", selectedBook.shortName, nil]];
-    segmentControl.segmentedControlStyle = UISegmentedControlStyleBar;
-    if([UIDeviceHardware isOS7Device]){
-        segmentControl.tintColor = [UIColor defaultWindowColor];
-    }else{
-        
-        for (UIView *subview in self.searchBarr.subviews) {
-            if ([subview conformsToProtocol:@protocol(UITextInputTraits)]) {
-                
-                UITextField *fieldSearch = (UITextField *)subview;
-                UILabel *lblCount = (UILabel *)[fieldSearch viewWithTag:tagLabelCount];
-                [lblCount removeFromSuperview];
-            }
-        }
-      
-             
+    
+    UIButton *new = [UIButton buttonWithType:UIButtonTypeCustom];
+    [new setTitle:@"New" forState:UIControlStateNormal];
+    [new setTitleColor:[UIColor defaultWindowColor] forState:UIControlStateSelected];
+    [new setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    new.tag = 2;
+    [new addTarget:self action:@selector(segementClicked:) forControlEvents:UIControlEventTouchUpInside];
+    self.newwBtn = new;
+    
+    CGRect frame3 = new.frame;
+    frame3.size = CGSizeMake(50, 38);
+    new.frame = frame3;
+    new.autoresizingMask = UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleLeftMargin;
+    //new.frame = CGRectMake(104, 1, 50, 38);
+    
+    [new setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
+    [new setBackgroundImage:nil forState:UIControlStateNormal];
+    
+    UIBarButtonItem *newbutton = [[UIBarButtonItem alloc] initWithCustomView:new];
+    
+    
+    
+    UIButton *book = [UIButton buttonWithType:UIButtonTypeCustom];
+    [book setTitle:selectedBook.shortName forState:UIControlStateNormal];
+    [book setTitleColor:[UIColor defaultWindowColor] forState:UIControlStateSelected];
+    [book setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    book.tag = 3;
+    [book addTarget:self action:@selector(segementClicked:) forControlEvents:UIControlEventTouchUpInside];
+    self.bookBtn = book;
+    book.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleLeftMargin;
+    
+    
+    CGRect frame4 = book.frame;
+    frame4.size.height = 38;
+    book.frame = frame4;
+    //book.frame = CGRectMake(156, 1, self.view.frame.size.width - 158 - 20, 38);
+    
+    [book setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
+    [book setBackgroundImage:nil forState:UIControlStateNormal];
+    
+    UIBarButtonItem *bookbutton = [[UIBarButtonItem alloc] initWithCustomView:book];
+    //UIBarButtonItem *flexx1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    
+    
+    UIToolbar *tolBar = [[UIToolbar alloc] init];
+    tolBar.items  = [NSArray arrayWithObjects: allbutton,oldbutton, newbutton,bookbutton, nil];
+    
+    tolBar.frame = CGRectMake(0, 0, self.view.frame.size.width, 40);
+    tolBar.barTintColor = [UIColor defaultWindowColor];
+    
+    searchBar.inputAccessoryView = tolBar;//ios6
+    
+    if (self.scopeValue == 0) {
+        all.selected = true;
+    } else if (self.scopeValue == 1) {
+        old.selected = true;
+    } else if (self.scopeValue == 2) {
+        new.selected = true;
+    } else if (self.scopeValue == 3) {
+        book.selected = true;
     }
     
-    //  control.momentary = YES;
-    [segmentControl addTarget:self action:@selector(segementClicked:) forControlEvents:UIControlEventValueChanged];
     
-    //+20131114
-    if([UIDeviceHardware isOS6Device]){
-        searchBar.inputAccessoryView = segmentControl;//ios6
-    }else{
-        for (UIView* v in searchBar.subviews) {
-            if ([v isKindOfClass:[UITextField class]]) {
-                ((UITextField*)v).inputAccessoryView = segmentControl;
-            }
-        }
-    }
-    
-    
-    segmentControl.selectedSegmentIndex = self.scopeValue;
+//    segmentControl.selectedSegmentIndex = self.scopeValue;
     return YES;
 }
 
@@ -840,9 +923,15 @@
     }
 }
 
-- (void) segementClicked:(UISegmentedControl *)sender{
+- (void) segementClicked:(UIButton *)sender{
     
-    self.scopeValue = sender.selectedSegmentIndex;
+    allBtn.selected = false;
+    oldBtn.selected = false;
+    newwBtn.selected = false;
+    bookBtn.selected = false;
+    
+    sender.selected = true;
+    self.scopeValue = sender.tag;
 }
 - (void) cancelClicked:(id)sender{
     

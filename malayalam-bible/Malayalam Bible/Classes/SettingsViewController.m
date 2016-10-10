@@ -146,27 +146,27 @@
         NSDictionary *dictMalayalamTypeChild2 = nil;
         NSURL *customURLv = [NSURL URLWithString:@"VaramozhiKB://"];
         
-        /*if([[UIApplication sharedApplication] canOpenURL:customURLv]){
+        if([[UIApplication sharedApplication] canOpenURL:customURLv]){
             
             dictMalayalamTypeChild2  = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"Varamozhi - Installed", @"") ,@"label",customURLv,@"customURL", nil];
             
-        }else{*/
+        }else{
             dictMalayalamTypeChild2  = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Varamozhi' for manglish keyboard", @"") ,@"label", nil]; //Install
-        //}
+        }
         
         NSDictionary *dictMalayalamTypeChild3 = nil;
         NSURL *customURLe = [NSURL URLWithString:@"EasyMalayalamKB://"];
         
-        /*if([[UIApplication sharedApplication] canOpenURL:customURLe]){
+        if([[UIApplication sharedApplication] canOpenURL:customURLe]){
             
             dictMalayalamTypeChild3 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Easy Malayalam' - Installed", @"") ,@"label",customURLe,@"customURL", nil];
             
         }else{
-          */
+          
             dictMalayalamTypeChild3 = [NSDictionary dictionaryWithObjectsAndKeys:NSLocalizedString(@"'Easy Malayalam' for in-script keyboard", @"") ,@"label", nil];
             
             
-        //}
+        }
         
         
         

@@ -31,7 +31,7 @@
 #import "VerseEditViewController.h"
 #import "Toast+UIView.h"
 #import "HighlightTableViewController.h"
-
+#import <Malayalam_Bible-Swift.h>
 
 #define kActionHelp 7
 
@@ -2196,6 +2196,16 @@ typedef enum ScrollDirection {
                                   target:self action:@selector(doSearch:)];
     [arrayOfTools addObject:btnSearch];
     
+    
+    UIBarButtonItem *flexPlay = [[UIBarButtonItem alloc]
+                                   initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+                                   target:nil action:nil];
+    [arrayOfTools addObject:flexPlay];
+    UIBarButtonItem *btnPlay = [[UIBarButtonItem alloc]
+                                  initWithBarButtonSystemItem:UIBarButtonSystemItemPlay
+                                  target:self action:@selector(doDownloadAndPlay:)];
+    [arrayOfTools addObject:btnPlay];
+    
     //+20130905[arrayOfTools addObject:flex4];
     
     //self.toolBarBottom.items = arrayOfTools;
@@ -2282,6 +2292,17 @@ typedef enum ScrollDirection {
 }
 
 #pragma mark @selector methods
+- (void)doDownloadAndPlay:(id)sender{
+    
+    UIStoryboard *sb = [UIStoryboard storyboardWithName:@"Home" bundle:nil];
+    DownloadAndPlayViewController *vc = [sb instantiateViewControllerWithIdentifier:@"DownloadAndPlayViewController"];
+
+    [self.navigationController pushViewController:vc animated:true];
+    
+    //DownloadAndPlayViewController *pdv = [[DownloadAndPlayViewController alloc] init];
+  
+    
+}
 //+20140929
 -(void)autoScroll
 {

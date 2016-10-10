@@ -17,6 +17,7 @@
 #import "CustomButton.h"
 #import <MessageUI/MFMessageComposeViewController.h>
 
+
 @class TintedImageView;
 
 @interface MalayalamBibleDetailViewController : UIViewController <UISplitViewControllerDelegate, PopOverDelegate, MFMailComposeViewControllerDelegate, UITabBarDelegate, UITableViewDataSource, UITableViewDelegate, MBProtocol, UIWebViewDelegate, UIScrollViewDelegate, ButtonClickDelegate, MFMessageComposeViewControllerDelegate, FPPopoverControllerDelegate, UIPopoverControllerDelegate, UIGestureRecognizerDelegate>//+20130905

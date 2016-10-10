@@ -35,5 +35,10 @@
 @property (nonatomic, retain) UITableView *tableViewSearch;
 @property (strong, nonatomic) Book *selectedBook;
 
+@property (nonatomic, retain) UIButton *allBtn;
+@property (nonatomic, retain) UIButton *oldBtn;
+@property (nonatomic, retain) UIButton *newwBtn;
+@property (nonatomic, retain) UIButton *bookBtn;
+
 
 @end
