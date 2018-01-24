@@ -136,7 +136,7 @@ const CGFloat tagWidthOffset = 10.0f;
     NSInteger width = 0;//scrollViewBar.frame.size.width;
     UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
     if(orientation == UIInterfaceOrientationPortrait || orientation == UIInterfaceOrientationPortraitUpsideDown) {
-        width = 320;
+        width = self.view.frame.size.width - 40;//320 +2080111
     }
     else {
         width = 460;

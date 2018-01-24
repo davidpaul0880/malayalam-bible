@@ -33,7 +33,7 @@
 @implementation MalayalamBibleAppDelegate
 
 @synthesize detailViewController = _detailViewController;
-@synthesize window = _window;
+//@synthesize window = _window;
 @synthesize navigationController = _navigationController;
 @synthesize splitViewController = _splitViewController;
 @synthesize savedLocation;
@@ -42,7 +42,7 @@
 @synthesize managedObjectModel = _managedObjectModel;
 @synthesize persistentStoreCoordinator = _persistentStoreCoordinator;
 
-NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain our restore location
+
 
 //+20140929
 -(void)showMasterController{
@@ -86,7 +86,7 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
         
         self.detailViewController.selectedBook = selBook;
         self.detailViewController.chapterId = chapterid;
-        [self.detailViewController configureView];
+        //+roll[self.detailViewController configureView];
 
     
     
@@ -101,37 +101,10 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
 {
     
    
+    //CGRect frame = [[UIScreen mainScreen] bounds];
+    //self.window = [[RootWindow alloc] initWithFrame:frame];
     
-    self.window = [[RootWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    
-    self.detailViewController = [[MalayalamBibleDetailViewController alloc] init];
-    
-    
-    // Override point for customization after application launch.
-    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-        
-        
-        self.navigationController = [[UINavigationController alloc] initWithRootViewController:self.detailViewController];
-        self.window.rootViewController = self.navigationController;
-        
-    } else {
-        
-                
-        //MalayalamBibleDetailViewController *detailViewController = [[MalayalamBibleDetailViewController alloc] initWithNibName:@"MalayalamBibleDetailViewController_iPad" bundle:nil];
-        UINavigationController *detailNavigationController = [[UINavigationController alloc] initWithRootViewController:self.detailViewController];
-        
-        MalayalamBibleMasterViewController *masterViewController = [[MalayalamBibleMasterViewController alloc] init];
-        masterViewController.detailViewController = self.detailViewController;
-        UINavigationController *masterNavigationController = [[UINavigationController alloc] initWithRootViewController:masterViewController];
-        
-        self.splitViewController = [[UISplitViewController alloc] init];
-        self.splitViewController.delegate = self.detailViewController;
-        self.splitViewController.viewControllers = [NSArray arrayWithObjects:masterNavigationController, detailNavigationController, nil];
-        
-        self.window.rootViewController = self.splitViewController;
-        
-        
-    }
+    /*
     
     
     
@@ -236,9 +209,7 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
                                   nil];
             
              [self restoreLevelWithSelectionArray:savedLocation];
-            /*MalayalamBibleMasterViewController *masterViewController = [[MalayalamBibleMasterViewController alloc] init];
-            UINavigationController *temp = [[UINavigationController alloc] initWithRootViewController:masterViewController];
-            [self.window.rootViewController presentModalViewController:temp animated:YES];*/
+     
         }
         // no saved selection, so user was at level 1 the last time
     }
@@ -248,46 +219,10 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
 	//NSDictionary *savedLocationDict = [NSDictionary dictionaryWithObject:savedLocation forKey:kRestoreLocationKey];
 	//[[NSUserDefaults standardUserDefaults] registerDefaults:savedLocationDict];
 	[[NSUserDefaults standardUserDefaults] synchronize];
-    
-    
-    /*NSString *pathname = [[NSBundle mainBundle] pathForResource:@"malayalam-bible" ofType:@"db" inDirectory:@"/"];
-    if(pathname != nil){
-        
-        NSLog(@"pathname = %@", pathname);
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        if([fileManager fileExistsAtPath:pathname]){
-            
-            NSLog(@"file exist = %@", pathname);
-             NSError *error;
-            if([fileManager removeItemAtPath:pathname error:&error]){
-                NSLog(@"removed old db");
-            }else{
-                 NSLog(@"err %@",[error localizedDescription]);
-            }
-        }
-    }
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *dbPath = [documentsDirectory stringByAppendingPathComponent:@"malayalam-english-bible.db"];
-
-    if(dbPath != nil){
-        
-        NSLog(@"dbPath = %@", dbPath);
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        if([fileManager fileExistsAtPath:dbPath]){
-            
-            NSLog(@"file exist = %@", dbPath);
-            NSError *error;
-            if([fileManager removeItemAtPath:dbPath error:&error]){
-                NSLog(@"removed old db");
-            }else{
-                NSLog(@"err %@",[error localizedDescription]);
-            }
-        }
-    }*/
+     */
     
    
-    NSInteger appColorr = [def integerForKey:kStoreThemeColor];
+    NSInteger appColorr = [[NSUserDefaults standardUserDefaults] integerForKey:kStoreThemeColor];
     MBLog(@"appcolor = %li", (long)appColorr);
     if([UIDeviceHardware isOS7Device]){
         
@@ -315,7 +250,7 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
     }else{
         statusBarHeight = 0;
     }
-   
+    [self.window makeKeyAndVisible];
     
     return YES;
 }
@@ -336,7 +271,7 @@ NSString *kRestoreLocationKey = @"RestoreLocation";	// preference key to obtain 
     
     MBLog(@"enter bg ");
     
-	[[NSUserDefaults standardUserDefaults] setObject:savedLocation forKey:kRestoreLocationKey];
+	[[NSUserDefaults standardUserDefaults] setObject:savedLocation forKey:@"RestoreLocation"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     /*
      Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 

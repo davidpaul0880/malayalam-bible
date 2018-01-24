@@ -785,7 +785,10 @@
     
     UIBarButtonItem *oldbutton = [[UIBarButtonItem alloc] initWithCustomView:old];
     
-    
+    UIBarButtonItem *flexx1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *flexx2 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *flexx3 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *flexx4 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
     UIButton *new = [UIButton buttonWithType:UIButtonTypeCustom];
     [new setTitle:@"New" forState:UIControlStateNormal];
@@ -831,7 +834,7 @@
     
     
     UIToolbar *tolBar = [[UIToolbar alloc] init];
-    tolBar.items  = [NSArray arrayWithObjects: allbutton,oldbutton, newbutton,bookbutton, nil];
+    tolBar.items  = [NSArray arrayWithObjects: allbutton,flexx1,oldbutton,flexx2, newbutton,flexx3, bookbutton, nil];
     
     tolBar.frame = CGRectMake(0, 0, self.view.frame.size.width, 40);
     tolBar.barTintColor = [UIColor defaultWindowColor];

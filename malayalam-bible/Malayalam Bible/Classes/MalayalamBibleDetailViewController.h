@@ -39,7 +39,7 @@
     BOOL isFromSeachController;
     UIToolbar *bottomToolBar;
     
-    BOOL isFullScreen;
+    //BOOL isFullScreen;
     BOOL isWebViewLoaded;
     
     NSMutableArray *arrayToMookmark;

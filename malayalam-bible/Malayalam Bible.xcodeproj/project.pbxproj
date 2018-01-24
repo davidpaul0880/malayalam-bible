@@ -114,8 +114,9 @@
 		0FFE50941450636E00BC85EE /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 0FFE50931450636E00BC85EE /* main.m */; };
 		0FFE50981450636E00BC85EE /* MalayalamBibleAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 0FFE50971450636E00BC85EE /* MalayalamBibleAppDelegate.m */; };
 		0FFE50BB1450744400BC85EE /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0FFE50BA1450744400BC85EE /* libsqlite3.dylib */; };
+		689859CD1FF58D580082A643 /* RootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 689859CC1FF58D580082A643 /* RootViewController.m */; };
+		8F29675C1DAFF29500E4C679 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8F29675B1DAFF29500E4C679 /* LaunchScreen.storyboard */; };
 		8F4FBB851D1696C100967AEC /* PlayAndDownloadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F4FBB841D1696C100967AEC /* PlayAndDownloadViewController.m */; };
-		8F6286E71BA26DD4005AEC78 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */; };
 		8F6286E91BA26FDC005AEC78 /* work in Resources */ = {isa = PBXBuildFile; fileRef = 8F6286E81BA26FDC005AEC78 /* work */; };
 		8F62F73017D0E93B00082A1C /* TintedImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F62F72F17D0E93B00082A1C /* TintedImageView.m */; };
 		8F64F89F17A034B0007794C4 /* CellSearch.m in Sources */ = {isa = PBXBuildFile; fileRef = 8F64F89E17A034B0007794C4 /* CellSearch.m */; };
@@ -311,10 +312,12 @@
 		0FFE50961450636E00BC85EE /* MalayalamBibleAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MalayalamBibleAppDelegate.h; sourceTree = "<group>"; };
 		0FFE50971450636E00BC85EE /* MalayalamBibleAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MalayalamBibleAppDelegate.m; sourceTree = "<group>"; };
 		0FFE50BA1450744400BC85EE /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
+		689859CB1FF58D580082A643 /* RootViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RootViewController.h; sourceTree = "<group>"; };
+		689859CC1FF58D580082A643 /* RootViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RootViewController.m; sourceTree = "<group>"; };
 		8F0143E11DA94A70009F80E5 /* Malayalam Bible-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Malayalam Bible-Bridging-Header.h"; sourceTree = SOURCE_ROOT; };
+		8F29675B1DAFF29500E4C679 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8F4FBB831D1696C100967AEC /* PlayAndDownloadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlayAndDownloadViewController.h; sourceTree = "<group>"; };
 		8F4FBB841D1696C100967AEC /* PlayAndDownloadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PlayAndDownloadViewController.m; sourceTree = "<group>"; };
-		8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LaunchScreen.xib; sourceTree = "<group>"; };
 		8F6286E81BA26FDC005AEC78 /* work */ = {isa = PBXFileReference; lastKnownFileType = folder; path = work; sourceTree = "<group>"; };
 		8F62F72E17D0E93B00082A1C /* TintedImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TintedImageView.h; sourceTree = "<group>"; };
 		8F62F72F17D0E93B00082A1C /* TintedImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TintedImageView.m; sourceTree = "<group>"; };
@@ -566,7 +569,6 @@
 				0FFE508E1450636E00BC85EE /* Supporting Files */,
 				0FBAE75114520F6B007718D3 /* Information.xib */,
 				8FC2C08C1B98AD0B002E76AF /* Images.xcassets */,
-				8F6286E61BA26DD4005AEC78 /* LaunchScreen.xib */,
 			);
 			path = "Malayalam Bible";
 			sourceTree = "<group>";
@@ -580,6 +582,7 @@
 				0FFE50931450636E00BC85EE /* main.m */,
 				0FFE50951450636E00BC85EE /* Malayalam Bible-Prefix.pch */,
 				8FB02DB61D1704030074E650 /* Home.storyboard */,
+				8F29675B1DAFF29500E4C679 /* LaunchScreen.storyboard */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -639,6 +642,8 @@
 				03AF1FC515A8437D001BA50D /* MBProtocol.h */,
 				03D7FB58173A7ACB00CFB46E /* MBUtils.h */,
 				03D7FB59173A7ACB00CFB46E /* MBUtils.m */,
+				689859CB1FF58D580082A643 /* RootViewController.h */,
+				689859CC1FF58D580082A643 /* RootViewController.m */,
 			);
 			path = Classes;
 			sourceTree = "<group>";
@@ -787,7 +792,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0720;
-				LastUpgradeCheck = 0800;
+				LastUpgradeCheck = 0910;
 				TargetAttributes = {
 					0FFE50821450636E00BC85EE = {
 						DevelopmentTeam = 58V2A74LJ7;
@@ -836,6 +841,7 @@
 				8FB58B7C14A246D0009226AE /* Chapters.png in Resources */,
 				03DFB76E1AD680DB00B0EB25 /* Color2.png in Resources */,
 				8FB58B7D14A246D0009226AE /* next.png in Resources */,
+				8F29675C1DAFF29500E4C679 /* LaunchScreen.storyboard in Resources */,
 				8F6286E91BA26FDC005AEC78 /* work in Resources */,
 				8FC2C08D1B98AD0B002E76AF /* Images.xcassets in Resources */,
 				8FB58B7E14A246D0009226AE /* next@2x.png in Resources */,
@@ -872,7 +878,6 @@
 				03243B3E1733F176008CFB7F /* info@2x.png in Resources */,
 				8FF6341317FC5AAC006C8A1B /* ios7_envelope.png in Resources */,
 				8FF6341917FC5AAC006C8A1B /* ios7_readlater.png in Resources */,
-				8F6286E71BA26DD4005AEC78 /* LaunchScreen.xib in Resources */,
 				03243B3F1733F176008CFB7F /* mail.png in Resources */,
 				03547DD21A924CC300D3B53E /* fullscreen@2x.png in Resources */,
 				03243B401733F176008CFB7F /* mail@2x.png in Resources */,
@@ -928,6 +933,7 @@
 				03D3FFEF14C036E9004A8BE8 /* LanguageViewController.m in Sources */,
 				8FB02DBF1D17129A0074E650 /* Download.swift in Sources */,
 				03D3FFF214C04098004A8BE8 /* SelectionController.m in Sources */,
+				689859CD1FF58D580082A643 /* RootViewController.m in Sources */,
 				03D3FFF614C053FD004A8BE8 /* MBConstants.m in Sources */,
 				03BA84C915022AAD0089ABCE /* lex.macro_mozhi_unicode.c in Sources */,
 				03BA84CA15022AAD0089ABCE /* lex.mozhi_unicode.c in Sources */,
@@ -1003,12 +1009,18 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -1048,12 +1060,18 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -1091,7 +1109,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				COMPRESS_PNG_FILES = NO;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 58V2A74LJ7;
@@ -1104,8 +1122,8 @@
 				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jeesmon.apps.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "469c1810-c8cb-48ec-ab66-689240e88a1a";
-				PROVISIONING_PROFILE_SPECIFIER = "Bible Profile";
+				PROVISIONING_PROFILE = "fbe8d65c-446e-431b-a123-fad2cb84bb85";
+				PROVISIONING_PROFILE_SPECIFIER = "Bible AppStore_20180111";
 				SWIFT_OBJC_BRIDGING_HEADER = "Malayalam Bible-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 3.0;
@@ -1134,9 +1152,9 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jeesmon.apps.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "bd39df55-6820-4a9f-8305-78066581949b";
+				PROVISIONING_PROFILE = "fbe8d65c-446e-431b-a123-fad2cb84bb85";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "469c1810-c8cb-48ec-ab66-689240e88a1a";
-				PROVISIONING_PROFILE_SPECIFIER = "Bible AppStore";
+				PROVISIONING_PROFILE_SPECIFIER = "Bible AppStore_20180111";
 				SWIFT_OBJC_BRIDGING_HEADER = "Malayalam Bible-Bridging-Header.h";
 				SWIFT_VERSION = 3.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

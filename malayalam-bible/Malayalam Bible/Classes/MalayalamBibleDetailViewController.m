@@ -151,7 +151,6 @@ typedef enum ScrollDirection {
         }
         
         UIView *viewTitle = [[UIView alloc] init];
-        //viewTitle.backgroundColor = [UIColor greenColor];
         
         UIFont *fontt = [UIFont boldSystemFontOfSize:17.0];
         if([UIDeviceHardware isOS7Device]){
@@ -159,8 +158,7 @@ typedef enum ScrollDirection {
             fontt = [UIFont boldSystemFontOfSize:18.0];
         }
         
-        UIView *referenceBtn = [[UIView alloc] init];//+20130417//[UIButton buttonWithType:UIButtonTypeCustom];
-        //referenceBtn.backgroundColor = [UIColor blueColor];
+        UIView *referenceBtn = [[UIView alloc] init];
         
         
         CGFloat booknameWidth = 125;
@@ -511,14 +509,10 @@ typedef enum ScrollDirection {
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
         }
         
-        if(isFullScreen){
-            UILabel *ttitlelabel = (UILabel *)[self.view viewWithTag:kTagFullScreenTitle];
-            ttitlelabel.text = [NSString stringWithFormat:@"%@ - %li", self.selectedBook.shortName, (long)self.chapterId];
-        }
-        
-        
-        //[self scrollToVerseId];
-        //[self loadSelections];
+//        if(isFullScreen){
+//            UILabel *ttitlelabel = (UILabel *)[self.view viewWithTag:kTagFullScreenTitle];
+//            ttitlelabel.text = [NSString stringWithFormat:@"%@ - %li", self.selectedBook.shortName, (long)self.chapterId];
+//        }
     }
     if([UIDeviceHardware isIpad]){//+20131231
         if (self.masterPopoverController != nil) {
@@ -541,9 +535,8 @@ typedef enum ScrollDirection {
 #pragma mark User Swipe Handiling
 - (void) toggleFullScreen {
     
-    //[self stopAutoScroll];
     
-    isFullScreen = !isFullScreen;
+    //isFullScreen = !isFullScreen;
     
     [UIView beginAnimations:@"fullscreen" context:nil];
     [UIView setAnimationBeginsFromCurrentState:YES];
@@ -557,7 +550,7 @@ typedef enum ScrollDirection {
         //+rollyValue += 64;
     }
     
-    if(!isFullScreen){
+    //if(!isFullScreen){
         MBLog(@"hide bars");
         CGRect rectToolbar = self.bottomToolBar.frame;
         [[self.view viewWithTag:kTagFullScreenView] removeFromSuperview];
@@ -576,75 +569,79 @@ typedef enum ScrollDirection {
         self.tableViewVerses.frame = tableRect2;
         
         [[UIApplication sharedApplication] setStatusBarHidden:NO];
-        
-        
-        rectToolbar.origin.y = self.view.frame.size.height-rectToolbar.size.height+1;
+        //ToDO os checks
+    CGFloat safeAreaBottom = 0;
+        if (@available(iOS 11, *)) {
+            safeAreaBottom = [UIApplication sharedApplication].keyWindow.safeAreaInsets.bottom;
+        }
+            
+        rectToolbar.origin.y = self.view.frame.size.height-safeAreaBottom-rectToolbar.size.height+1;
         self.bottomToolBar.frame = rectToolbar;
         
         self.navigationController.navigationBarHidden = NO;
         
         [UIView commitAnimations];
-        //[self.navigationController setNavigationBarHidden:isFullScreen animated:YES];
-    }else{
-        MBLog(@"show bars");
-        UIView *titleLabel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width,  20)];
-        UILabel *titleVieww = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width,  20)];
-        
-        titleLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
-        titleVieww.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
-        
-        titleVieww.text = [NSString stringWithFormat:@"%@ - %li", self.selectedBook.shortName, (long)self.chapterId];
-        [titleVieww setBackgroundColor:[UIColor blackColor]];
-        [titleVieww setTextAlignment:NSTextAlignmentCenter];
-        [titleVieww setTextColor:[UIColor whiteColor]];
-        [titleVieww setFont:[UIFont boldSystemFontOfSize:12]];
-        titleVieww.tag = kTagFullScreenTitle;
-        titleLabel.tag = kTagFullScreenView;
-        
-        UITapGestureRecognizer *singleFingerTap = [[UITapGestureRecognizer alloc] initWithTarget:self                                               action:@selector(scrollToTop:)];
-        
-        
-        [titleLabel addGestureRecognizer:singleFingerTap];
-        [titleLabel addSubview:titleVieww];
-        
-        
-        CGRect tableRect =  self.webViewVerses.frame;
-        tableRect.origin.y += 20;
-        tableRect.size.height -= 20;
-        tableRect.size.height += 45;
-        self.webViewVerses.frame = tableRect;
-        
-        
-        CGRect tableRect1 =  self.tableViewVerses.frame;
-        tableRect1.origin.y = 20;
-        tableRect1.size.height = self.view.frame.size.height - 20;
-        //tableRect1.size.height += 45;
-        self.tableViewVerses.frame = tableRect1;
-        
-        
-        CGRect navbarfr = self.navigationController.navigationBar.frame;
-        navbarfr.origin.y -= navbarfr.size.height;
-        self.navigationController.navigationBar.frame = navbarfr;
-        
-        
-        
-        
-        CGRect rectToolbar = self.bottomToolBar.frame;
-        rectToolbar.origin.y = self.view.frame.size.height;
-        self.bottomToolBar.frame = rectToolbar;
-        
-        [self.view addSubview:titleLabel];
-        
-        
-        
-        
-        
-        [UIView commitAnimations];
-        
-        [[UIApplication sharedApplication] setStatusBarHidden:YES];
-        
-        [self.navigationController setNavigationBarHidden:isFullScreen animated:NO];
-    }
+    //}
+//    else{
+//        MBLog(@"show bars");
+//        UIView *titleLabel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width,  20)];
+//        UILabel *titleVieww = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width,  20)];
+//
+//        titleLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
+//        titleVieww.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
+//
+//        titleVieww.text = [NSString stringWithFormat:@"%@ - %li", self.selectedBook.shortName, (long)self.chapterId];
+//        [titleVieww setBackgroundColor:[UIColor blackColor]];
+//        [titleVieww setTextAlignment:NSTextAlignmentCenter];
+//        [titleVieww setTextColor:[UIColor whiteColor]];
+//        [titleVieww setFont:[UIFont boldSystemFontOfSize:12]];
+//        titleVieww.tag = kTagFullScreenTitle;
+//        titleLabel.tag = kTagFullScreenView;
+//
+//        UITapGestureRecognizer *singleFingerTap = [[UITapGestureRecognizer alloc] initWithTarget:self                                               action:@selector(scrollToTop:)];
+//
+//
+//        [titleLabel addGestureRecognizer:singleFingerTap];
+//        [titleLabel addSubview:titleVieww];
+//
+//
+//        CGRect tableRect =  self.webViewVerses.frame;
+//        tableRect.origin.y += 20;
+//        tableRect.size.height -= 20;
+//        tableRect.size.height += 45;
+//        self.webViewVerses.frame = tableRect;
+//
+//
+//        CGRect tableRect1 =  self.tableViewVerses.frame;
+//        tableRect1.origin.y = 20;
+//        tableRect1.size.height = self.view.frame.size.height - 20;
+//        //tableRect1.size.height += 45;
+//        self.tableViewVerses.frame = tableRect1;
+//
+//
+//        CGRect navbarfr = self.navigationController.navigationBar.frame;
+//        navbarfr.origin.y -= navbarfr.size.height;
+//        self.navigationController.navigationBar.frame = navbarfr;
+//
+//
+//
+//
+//        CGRect rectToolbar = self.bottomToolBar.frame;
+//        rectToolbar.origin.y = self.view.frame.size.height;
+//        self.bottomToolBar.frame = rectToolbar;
+//
+//        [self.view addSubview:titleLabel];
+//
+//
+//
+//
+//
+//        [UIView commitAnimations];
+//
+//        [[UIApplication sharedApplication] setStatusBarHidden:YES];
+//
+//        [self.navigationController setNavigationBarHidden:isFullScreen animated:NO];
+//    }
     
     
     
@@ -1037,18 +1034,18 @@ typedef enum ScrollDirection {
 #pragma mark - View lifecycle
 - (BOOL)prefersStatusBarHidden
 {
-    if(isFullScreen){
-        MBLog(@"full screen");
-        return YES;
-    }else{
-        MBLog(@"not full screen");
-        return NO;
-    }
+    return NO;
+//    if(isFullScreen){
+//        MBLog(@"full screen");
+//        return YES;
+//    }else{
+//        MBLog(@"not full screen");
+//        return NO;
+//    }
     
 }
-- (void) loadView{
+- (void) loadMyView{
     
-    [super loadView];
     
     
     
@@ -1149,9 +1146,11 @@ typedef enum ScrollDirection {
      [self.view addSubview:self.versesLeft];
      [self.view addSubview:self.versesRight];
      */
-    
-    
-    self.bottomToolBar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height-44, self.view.frame.size.width, 45)];
+    CGFloat safeAreaBottom = 0;
+    if (@available(iOS 11, *)) {
+        safeAreaBottom = [UIApplication sharedApplication].keyWindow.safeAreaInsets.bottom;
+    }
+    self.bottomToolBar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height-safeAreaBottom-44, self.view.frame.size.width, 45)];
     self.bottomToolBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin;
     if([UIDeviceHardware isOS7Device]){
         
@@ -1177,6 +1176,7 @@ typedef enum ScrollDirection {
 {
     [super viewDidLoad];
     
+    [self loadMyView];
     
     self.tableViewVerses.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableViewVerses.allowsSelection = NO;
@@ -2197,14 +2197,14 @@ typedef enum ScrollDirection {
     [arrayOfTools addObject:btnSearch];
     
     
-    UIBarButtonItem *flexPlay = [[UIBarButtonItem alloc]
-                                   initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
-                                   target:nil action:nil];
-    [arrayOfTools addObject:flexPlay];
-    UIBarButtonItem *btnPlay = [[UIBarButtonItem alloc]
-                                  initWithBarButtonSystemItem:UIBarButtonSystemItemPlay
-                                  target:self action:@selector(doDownloadAndPlay:)];
-    [arrayOfTools addObject:btnPlay];
+//    UIBarButtonItem *flexPlay = [[UIBarButtonItem alloc]
+//                                   initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+//                                   target:nil action:nil];
+//    [arrayOfTools addObject:flexPlay];
+//    UIBarButtonItem *btnPlay = [[UIBarButtonItem alloc]
+//                                  initWithBarButtonSystemItem:UIBarButtonSystemItemPlay
+//                                  target:self action:@selector(doDownloadAndPlay:)];
+//    [arrayOfTools addObject:btnPlay];
     
     //+20130905[arrayOfTools addObject:flex4];
     
@@ -2377,7 +2377,7 @@ typedef enum ScrollDirection {
 }
 
 - (void) openNotes{
-    
+    [self stopAutoScroll];
     NotesViewController *controller = [[NotesViewController alloc] initWithStyle:UITableViewStyleGrouped];
     
     //controller.delegate = self;
@@ -2614,7 +2614,7 @@ typedef enum ScrollDirection {
     //[self.view bringSubviewToFront:toolbarAction];
 }
 - (void) showPreferences:(id)sender{
-    
+    [self stopAutoScroll];
     SettingsViewController *ctrlr = [[SettingsViewController alloc] initWithStyle:UITableViewStyleGrouped];
     [self.navigationController pushViewController:ctrlr animated:YES];
     
@@ -2624,7 +2624,7 @@ typedef enum ScrollDirection {
     //[self.navigationController pushViewController:ctrlr animated:YES];
 }
 - (void) doSearch:(id)sender{
-    
+    [self stopAutoScroll];
     if(!self.searchController){
         
         self.searchController = [[SearchViewController alloc] init];
@@ -2826,7 +2826,7 @@ typedef enum ScrollDirection {
  */
 
 - (void) openColordVerses{
-    
+    [self stopAutoScroll];
     HighlightTableViewController *ctrlr = [[HighlightTableViewController alloc] init];
     ctrlr.detailViewController = self;
     [self.navigationController pushViewController:ctrlr animated:YES];
@@ -2835,7 +2835,7 @@ typedef enum ScrollDirection {
 - (void) openBookmarks{
     
     
-    
+    [self stopAutoScroll];
     BookMarkViewController *bmctrlr = [[BookMarkViewController alloc] initWithStyle:UITableViewStyleGrouped BMFolder:nil];
     bmctrlr.detailViewController = self;
     [self.navigationController pushViewController:bmctrlr animated:YES];
@@ -3986,13 +3986,13 @@ typedef enum ScrollDirection {
         {
             // then we are at the top
             [self stopAutoScroll];
-            if(isFullScreen){
-                
-                self.isLoaded = NO;
-                [self toggleFullScreen];
-                
-                self.isLoaded = YES;
-            }
+//            if(isFullScreen){
+//
+//                self.isLoaded = NO;
+//                [self toggleFullScreen];
+//
+//                self.isLoaded = YES;
+//            }
         }
         else if (scrollOffset + scrollViewHeight >= scrollContentSizeHeight)
         {
@@ -4019,19 +4019,19 @@ typedef enum ScrollDirection {
                         self.isautoscrollling = YES;
                    
                         
-                        float scrollViewHeight = scrollView.frame.size.height;
-                        float scrollContentSizeHeight = scrollView.contentSize.height;
-                        float scrollOffset = scrollView.contentOffset.y;
-                        
-                        if (scrollOffset + scrollViewHeight + 100 < scrollContentSizeHeight)
-                        {
-                        
-                            if(!isFullScreen){
-                            MBLog(@"here1 %lf - %lf ",scrollOffset + scrollViewHeight, scrollContentSizeHeight);
-                                [self toggleFullScreen];
-                            }
-                        }
-                        
+//                        float scrollViewHeight = scrollView.frame.size.height;
+//                        float scrollContentSizeHeight = scrollView.contentSize.height;
+//                        float scrollOffset = scrollView.contentOffset.y;
+//
+//                        if (scrollOffset + scrollViewHeight + 100 < scrollContentSizeHeight)
+//                        {
+//
+//                            if(!isFullScreen){
+//                            MBLog(@"here1 %lf - %lf ",scrollOffset + scrollViewHeight, scrollContentSizeHeight);
+//                                [self toggleFullScreen];
+//                            }
+//                        }
+//
                         if (isScrollEnabled) { [self autoScroll]; }
                     }
                     
@@ -4110,13 +4110,13 @@ typedef enum ScrollDirection {
                 else if (scrollDirection == ScrollDirectionDown){
                     
                     [self stopAutoScroll];
-                    if(isFullScreen){
-                        MBLog(@"here2");
-                        self.isLoaded = NO;
-                        [self toggleFullScreen];
-                        
-                        self.isLoaded = YES;
-                    }
+//                    if(isFullScreen){
+//                        MBLog(@"here2");
+//                        self.isLoaded = NO;
+//                        [self toggleFullScreen];
+//
+//                        self.isLoaded = YES;
+//                    }
                     
                 }
             }
@@ -4148,13 +4148,13 @@ typedef enum ScrollDirection {
 
         // then we are at the end
         [self stopAutoScroll];
-        if(isFullScreen){
-
-            self.isLoaded = NO;
-            [self toggleFullScreen];
-           
-            self.isLoaded = YES;
-        }
+//        if(isFullScreen){
+//
+//            self.isLoaded = NO;
+//            [self toggleFullScreen];
+//
+//            self.isLoaded = YES;
+//        }
         
     }
     self.lastContentOffset = scrollOffset;

@@ -19,7 +19,7 @@ static NSString * const kStatusBarTappedNotification = @"statusBarTappedNotifica
     // [ dictionary bookPathSection and bookpathRow keys, NSNumber chapterIndex , dictionary scrollposition]   
 }
 
-@property (strong, nonatomic) RootWindow *window;
+@property (strong, nonatomic) UIWindow *window;
 @property (nonatomic, retain) NSMutableArray *savedLocation;
 @property (strong, nonatomic) UINavigationController *navigationController;
 @property (strong, nonatomic) MalayalamBibleDetailViewController *detailViewController;
@@ -29,7 +29,7 @@ static NSString * const kStatusBarTappedNotification = @"statusBarTappedNotifica
 
 - (void)saveContext;
 - (NSURL *)applicationDocumentsDirectory;
-
+- (void)restoreLevelWithSelectionArray:(NSArray *)selectionArray;
 - (void)openVerseForiPadSavedLocation;
 - (NSManagedObjectContext *)managedObjectContext;
 -(void)showMasterController;
