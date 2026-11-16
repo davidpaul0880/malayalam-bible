@@ -293,14 +293,14 @@ extension DownloadAndPlayViewController: UITableViewDataSource {
             cell.progressLabel.text = (download.isDownloading) ? "Downloading..." : "Paused"
             
             let title = (download.isDownloading) ? "Pause" : "Resume"
-            cell.pauseButton.setTitle(title, for: UIControlState())
+            cell.pauseButton.setTitle(title, for: .normal)
         }
         cell.progressView.isHidden = !showDownloadControls
         cell.progressLabel.isHidden = !showDownloadControls
         
         // If the track is already downloaded, enable cell selection and hide the Download button
         let downloaded = localFileExistsForTrack(track)
-        cell.selectionStyle = downloaded ? UITableViewCellSelectionStyle.gray : UITableViewCellSelectionStyle.none
+        cell.selectionStyle = downloaded ? UITableViewCell.SelectionStyle.gray : UITableViewCell.SelectionStyle.none
         cell.downloadButton.isHidden = downloaded || showDownloadControls
         
         cell.pauseButton.isHidden = !showDownloadControls

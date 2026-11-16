@@ -806,6 +806,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 0FFE50781450636E00BC85EE;
@@ -1117,7 +1118,7 @@
 				GCC_PREFIX_HEADER = "Malayalam Bible/Malayalam Bible-Prefix.pch";
 				GCC_THUMB_SUPPORT = NO;
 				INFOPLIST_FILE = "Malayalam Bible/Malayalam Bible-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jeesmon.apps.${PRODUCT_NAME:rfc1034identifier}";
@@ -1126,7 +1127,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "Bible AppStore_20180111";
 				SWIFT_OBJC_BRIDGING_HEADER = "Malayalam Bible-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "armv7 armv7s arm64";
 				WRAPPER_EXTENSION = app;
@@ -1148,7 +1149,7 @@
 				GCC_PREFIX_HEADER = "Malayalam Bible/Malayalam Bible-Prefix.pch";
 				GCC_THUMB_SUPPORT = NO;
 				INFOPLIST_FILE = "Malayalam Bible/Malayalam Bible-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jeesmon.apps.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1156,7 +1157,7 @@
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "469c1810-c8cb-48ec-ab66-689240e88a1a";
 				PROVISIONING_PROFILE_SPECIFIER = "Bible AppStore_20180111";
 				SWIFT_OBJC_BRIDGING_HEADER = "Malayalam Bible-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "armv7 armv7s arm64";
 				WRAPPER_EXTENSION = app;
