@@ -37,6 +37,15 @@
 
 #define kActionMore 9
 
+//+20261117 Floating glass selection action menu: Share (native Share Sheet). 17 is not used by any other action code.
+#ifndef kActionShare
+#define kActionShare 17
+#endif
+
+//+20261117 The selection action menu replaces the small share toolbar that used to appear beside the selected verse.
+// That code is kept in verseClicked: and only runs if this is set to YES.
+static const BOOL kMBUseLegacyShareToolbar = NO;
+
 #define kTagFullScreenTitle 48
 #define kTagFullScreenView  54
 
@@ -109,6 +118,36 @@ __VA_ARGS__ \
 - (void)mb_applyNavigationBarAppearanceDark:(BOOL)isDark;
 - (void)mb_applyTransparentToolbarAppearance;
 
+//+20261117 floating glass selection action menu
+@property (strong, nonatomic) UIView *selectionMenuContainer;
+@property (strong, nonatomic) UIVisualEffectView *selectionMenuGlass;
+@property (strong, nonatomic) NSArray<UIButton *> *selectionMenuButtons;
+@property (strong, nonatomic) NSArray<UIButton *> *selectionMenuSwatches;
+@property (strong, nonatomic) UIButton *selectionMenuShareButton;
+@property (strong, nonatomic) UIButton *selectionMenuOffButton;
+@property (strong, nonatomic) UIView *selectionCountContainer;
+@property (strong, nonatomic) UIVisualEffectView *selectionCountGlass;
+@property (strong, nonatomic) UILabel *selectionCountLabel;
+@property (strong, nonatomic) UITapGestureRecognizer *selectionOutsideTap;
+@property (strong, nonatomic) id<UIGestureRecognizerDelegate> selectionOutsideTapDelegate;
+@property (nonatomic, assign) BOOL isSelectionMenuVisible;
+@property (nonatomic, assign) BOOL isSelectionSharePresented;
+@property (nonatomic, assign) CGFloat selectionMenuTop;
+
+- (void) mb_sortSelection;
+- (NSString *) mb_selectedVersesPlainText;
+- (void) mb_installSelectionMenuIfNeeded;
+- (void) mb_styleSelectionMenu;
+- (void) mb_layoutSelectionMenu;
+- (void) mb_setSelectionMenuVisible:(BOOL)visible animated:(BOOL)animated;
+- (void) mb_syncSelectionMenu;
+- (void) mb_discardSelectionForReload;
+- (void) mb_selectionMenuButtonTapped:(UIButton *)sender;
+- (void) mb_presentShareSheetFromView:(UIView *)sourceView;
+- (void) mb_shareSheetDidFinish;
+- (void) mb_handleSelectionOutsideTap:(UITapGestureRecognizer *)recognizer;
+- (void) clearSelections;
+
 @end
 
 typedef enum ScrollDirection {
@@ -119,6 +158,18 @@ typedef enum ScrollDirection {
     ScrollDirectionDown,
     ScrollDirectionCrazy,
 } ScrollDirection;
+
+//+20261117 Floating glass selection action menu: delegate of the outside-tap recognizer on the verses.
+// Allows simultaneous recognition so it never blocks the web view's own taps (verse selection) or scrolling.
+// The view controller's existing UIGestureRecognizerDelegate methods are deliberately not used for it.
+@interface MBSelectionOutsideTapDelegate : NSObject <UIGestureRecognizerDelegate>
+@end
+
+@implementation MBSelectionOutsideTapDelegate
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
+    return YES;
+}
+@end
 
 @implementation MalayalamBibleDetailViewController
 
@@ -1353,6 +1404,11 @@ typedef enum ScrollDirection {
 {
     [super viewWillDisappear:animated];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kStatusBarTappedNotification object:nil];
+    //+20261117 Navigating away (push or pop) ends a verse selection and restores the floating toolbar.
+    // Sheets presented over this screen (book/chapter pickers, Bookmark, Share) keep the existing behaviour.
+    if (self.arrayToMookmark.count > 0 && (self.navigationController.topViewController != self || self.isMovingFromParentViewController)) {
+        [self clearSelections];
+    }
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -1926,8 +1982,9 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     UIToolbar *toolbar = self.bottomToolBar;
     if (toolbar == nil || toolbar.superview != self.view || self.floatingBarTop <= 0) return;
 
-    BOOL barShown = !toolbar.hidden;
+    BOOL barShown = !toolbar.hidden || self.isSelectionMenuVisible;//+20261117 the selection menu takes the toolbar's place
     CGFloat barTop = self.floatingBarTop;
+    if (self.isSelectionMenuVisible && self.selectionMenuTop > 0) barTop = MIN(barTop, self.selectionMenuTop);//+20261117 count label / two-row menu
 
     CGRect webFrame = self.webViewVerses.frame;
     CGFloat webInset = barShown ? MAX(0, CGRectGetMaxY(webFrame) - barTop + kGlassContentSpacing) : 0;
@@ -1942,6 +1999,514 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
 
     [super viewDidLayoutSubviews];
     [self layoutBottomToolbar];
+    [self mb_layoutSelectionMenu];//+20261117
+}
+
+
+#pragma mark - Floating glass selection action menu (+20261117)
+//
+// While one or more verses are selected, the floating reading toolbar and the Search circle are hidden
+// (hidden flag only; their alpha and transform belong to the minimise animation) and this glass menu takes
+// their place: Bookmark, Share, the five configurable highlight colours (kStoreColor1-5, in that order)
+// and off. A small separate glass label above the menu shows the selected-verse count ("3 verses").
+// Bookmark, the colours and off call the existing buttonClickedWithTag: with their existing action codes.
+// Share presents the native Share Sheet with exactly the Copy text.
+// Every way a selection ends (deselecting the last verse, an action, closing the Share Sheet, tapping
+// outside the verses, a new chapter, leaving the screen) hides the menu and restores the floating toolbar
+// and the Search circle. Every action keeps a 44 pt touch target: on screens too narrow for one row of
+// eight actions the menu uses two rows (colours above; Bookmark, Share, off below).
+
+static const CGFloat kSelectionTarget = 44.0;          // minimum touch target of every menu action
+static const CGFloat kSelectionPadding = 6.0;          // inner padding of the menu capsule
+static const CGFloat kSelectionRowGap = 4.0;           // gap between the two rows on narrow screens
+static const CGFloat kSelectionScreenMargin = 8.0;     // minimum distance from the screen edges
+static const CGFloat kSelectionCornerRadius = 28.0;
+static const CGFloat kSelectionSwatchDiameter = 26.0;
+static const CGFloat kSelectionCountHeight = 26.0;
+static const CGFloat kSelectionCountGap = 6.0;         // between the count label and the menu
+static const NSInteger kTagSelectionSwatchDot = 7311;
+
+#pragma mark Selection helpers
+
+// Same numeric sort that actionClicked: applies before the old popover; titles, Copy text and bookmarks rely on it.
+- (void) mb_sortSelection{
+
+    [self.arrayToMookmark sortUsingComparator:^NSComparisonResult(NSString *str1, NSString *str2) {
+        return [str1 compare:str2 options:(NSNumericSearch)];
+    }];
+}
+
+// The Copy text, moved unchanged out of buttonClickedWithTag: (kActionCopy) so Copy and Share produce identical text.
+- (NSString *) mb_selectedVersesPlainText{
+
+    NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
+    NSString *secondaryL = kLangNone;
+    if(dictPref !=nil ){
+        secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
+    }
+
+
+    NSMutableString *verseStr = [[NSMutableString alloc] init ];
+    [verseStr appendFormat:@"%@", self.selectedBook.shortName];
+    [verseStr appendFormat:@" %li", (long)self.chapterId];
+
+    NSUInteger countV = [self.arrayToMookmark count];
+
+    if(countV == 0){
+
+
+    }else if(countV == 1 && [secondaryL isEqualToString:kLangNone]){
+
+        NSDictionary *dict = [self.bVerses objectAtIndex:[[self.arrayToMookmark objectAtIndex:0] integerValue]];
+        [verseStr appendFormat:@" : %@\n", [dict valueForKey:@"verse_text"]];
+
+    }else{
+
+        [verseStr appendFormat:@"\n"];
+        for(NSUInteger i=0; i<countV ; i++ ){
+
+            NSDictionary *dict = [self.bVerses objectAtIndex:[[self.arrayToMookmark objectAtIndex:i] integerValue]];
+            [verseStr appendFormat:@"%@\n", [dict valueForKey:@"verse_text"]];
+        }
+    }
+
+    return verseStr;
+}
+
+- (NSString *) mb_selectionCountText{
+
+    NSUInteger count = self.arrayToMookmark.count;
+    if (count == 1) {
+        return NSLocalizedStringWithDefaultValue(@"selection.count.one", nil, [NSBundle mainBundle], @"1 verse", @"Selected-verse count, one verse");
+    }
+    NSString *format = NSLocalizedStringWithDefaultValue(@"selection.count.other", nil, [NSBundle mainBundle], @"%lu verses", @"Selected-verse count, several verses");
+    return [NSString stringWithFormat:format, (unsigned long)count];
+}
+
+#pragma mark Selection menu construction
+
+- (UIButton *) mb_selectionMenuButtonWithTag:(NSInteger)actionTag{
+
+    UIButton *button = [UIButton buttonWithType:(actionTag >= kActionColor1 && actionTag <= kActionColor5) ? UIButtonTypeCustom : UIButtonTypeSystem];
+    button.tag = actionTag;
+    button.pointerInteractionEnabled = YES;
+    [button addTarget:self action:@selector(mb_selectionMenuButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+// Created once, the first time verses are selected.
+- (void) mb_installSelectionMenuIfNeeded{
+
+    if (self.selectionMenuContainer != nil || self.bottomToolBar.superview != self.view) return;
+
+    UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
+
+    // Menu: a non-clipping host carries the shadow, the glass inside it clips to the capsule.
+    UIView *menu = [[UIView alloc] initWithFrame:CGRectZero];
+    menu.backgroundColor = [UIColor clearColor];
+    menu.hidden = YES;
+    menu.alpha = 0.0;
+
+    UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:nil];
+    glass.frame = menu.bounds;
+    [menu addSubview:glass];
+
+    UIButton *bookmarkButton = [self mb_selectionMenuButtonWithTag:kActionBookmark];
+    [bookmarkButton setImage:[UIImage systemImageNamed:@"bookmark" withConfiguration:symbolConfig] forState:UIControlStateNormal];
+    bookmarkButton.accessibilityLabel = NSLocalizedString(@"action.bookmark", @"");
+
+    UIButton *shareButton = [self mb_selectionMenuButtonWithTag:kActionShare];
+    [shareButton setImage:[UIImage systemImageNamed:@"square.and.arrow.up" withConfiguration:symbolConfig] forState:UIControlStateNormal];
+    shareButton.accessibilityLabel = NSLocalizedString(@"Share", @"");
+
+    NSMutableArray *swatches = [NSMutableArray arrayWithCapacity:5];
+    for (NSInteger actionTag = kActionColor1; actionTag <= kActionColor5; actionTag++) {
+        UIButton *swatch = [self mb_selectionMenuButtonWithTag:actionTag];
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, kSelectionSwatchDiameter, kSelectionSwatchDiameter)];
+        dot.tag = kTagSelectionSwatchDot;
+        dot.userInteractionEnabled = NO;
+        dot.layer.cornerRadius = kSelectionSwatchDiameter / 2.0;
+        dot.layer.borderWidth = 1.0;
+        [swatch addSubview:dot];
+        swatch.accessibilityLabel = [NSString stringWithFormat:NSLocalizedString(@"Highlight colour %ld", @""), (long)actionTag];
+        [swatches addObject:swatch];
+    }
+
+    UIButton *offButton = [self mb_selectionMenuButtonWithTag:kActionClear];
+    offButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+
+    // Display order: Bookmark, Share, colour 1-5, off.
+    NSMutableArray *buttons = [NSMutableArray arrayWithObjects:bookmarkButton, shareButton, nil];
+    [buttons addObjectsFromArray:swatches];
+    [buttons addObject:offButton];
+    for (UIButton *button in buttons) {
+        [glass.contentView addSubview:button];
+    }
+
+    // Count label: a separate small glass label above the menu, so it never takes width from the actions.
+    UIView *countHost = [[UIView alloc] initWithFrame:CGRectZero];
+    countHost.backgroundColor = [UIColor clearColor];
+    countHost.hidden = YES;
+    countHost.alpha = 0.0;
+
+    UIVisualEffectView *countGlass = [[UIVisualEffectView alloc] initWithEffect:nil];
+    countGlass.frame = countHost.bounds;
+    [countHost addSubview:countGlass];
+
+    UILabel *countLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    countLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    countLabel.textAlignment = NSTextAlignmentCenter;
+    countLabel.textColor = [UIColor labelColor];
+    countLabel.accessibilityTraits = UIAccessibilityTraitStaticText;
+    [countGlass.contentView addSubview:countLabel];
+
+    self.selectionMenuContainer = menu;
+    self.selectionMenuGlass = glass;
+    self.selectionMenuButtons = buttons;
+    self.selectionMenuSwatches = swatches;
+    self.selectionMenuShareButton = shareButton;
+    self.selectionMenuOffButton = offButton;
+    self.selectionCountContainer = countHost;
+    self.selectionCountGlass = countGlass;
+    self.selectionCountLabel = countLabel;
+
+    [self.view addSubview:menu];
+    [self.view addSubview:countHost];
+
+    // Tap outside the verses (and outside the menu) ends the selection. Attached to the web view, so taps on
+    // the menu and the count label, which are siblings above it, never reach this recognizer.
+    MBSelectionOutsideTapDelegate *tapDelegate = [[MBSelectionOutsideTapDelegate alloc] init];
+    UITapGestureRecognizer *outsideTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(mb_handleSelectionOutsideTap:)];
+    outsideTap.cancelsTouchesInView = NO;
+    outsideTap.delaysTouchesEnded = NO;
+    outsideTap.delegate = tapDelegate;
+    outsideTap.enabled = NO;
+    [self.webViewVerses addGestureRecognizer:outsideTap];
+    self.selectionOutsideTapDelegate = tapDelegate;
+    self.selectionOutsideTap = outsideTap;
+}
+
+// Night mode, theme colour, the five configured colours and the off/E title are read every time the menu is shown.
+- (void) mb_styleSelectionMenu{
+
+    if (self.selectionMenuContainer == nil) return;
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    UIColor *tint = self.bottomToolBar.tintColor ?: [UIColor defaultWindowColor];
+
+    for (UIView *host in @[self.selectionMenuContainer, self.selectionCountContainer]) {
+        host.overrideUserInterfaceStyle = style;
+        [self mb_applyShadowToLayer:host.layer dark:isdark];
+    }
+    [self mb_styleGlassView:self.selectionMenuGlass dark:isdark interactive:NO];
+    [self mb_styleGlassView:self.selectionCountGlass dark:isdark interactive:NO];
+
+    for (UIButton *button in self.selectionMenuButtons) {
+        button.tintColor = tint;
+    }
+
+    NSArray *colourKeys = @[kStoreColor1, kStoreColor2, kStoreColor3, kStoreColor4, kStoreColor5];
+    for (NSUInteger i = 0; i < self.selectionMenuSwatches.count && i < colourKeys.count; i++) {
+        UIView *dot = [self.selectionMenuSwatches[i] viewWithTag:kTagSelectionSwatchDot];
+        // getHighlightColorof: also stores the default colour when none is saved yet (the colour handler reads it back).
+        dot.backgroundColor = [UIColor colorWithHexString:[MBUtils getHighlightColorof:colourKeys[i]]];
+        dot.layer.borderColor = (isdark ? [UIColor colorWithWhite:1.0 alpha:0.35] : [UIColor colorWithWhite:0.0 alpha:0.18]).CGColor;
+    }
+
+    // Same title rule as the old popover: "E" in E-mode, otherwise "off".
+    BOOL isEasterEgg = ([[NSUserDefaults standardUserDefaults] valueForKey:@"easteregg"] != nil);
+    UIButton *offButton = self.selectionMenuOffButton;
+    [offButton setTitle:(isEasterEgg ? NSLocalizedString(@"E", @"") : NSLocalizedString(@"action.clearall", @"")) forState:UIControlStateNormal];
+    [offButton setTitleColor:tint forState:UIControlStateNormal];
+    offButton.accessibilityLabel = isEasterEgg ? NSLocalizedString(@"Edit verse", @"") : NSLocalizedString(@"Remove highlight", @"");
+}
+
+#pragma mark Selection menu layout
+
+// Corner radius, rim and shadow path for one glass surface (same treatment as mb_updateGlassGeometry).
+- (void) mb_updateSelectionGlass:(UIVisualEffectView *)glass inHost:(UIView *)host cornerRadius:(CGFloat)radius{
+
+    glass.frame = host.bounds;
+    glass.layer.cornerRadius = radius;
+
+    UIView *rim = [glass.contentView viewWithTag:kTagGlassRim];
+    CAGradientLayer *gradient = (CAGradientLayer *)rim.layer.sublayers.firstObject;
+    if (gradient) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        rim.frame = glass.contentView.bounds;
+        gradient.frame = glass.bounds;
+        CAShapeLayer *stroke = (CAShapeLayer *)gradient.mask;
+        stroke.frame = glass.bounds;
+        stroke.lineWidth = 1.0;
+        stroke.fillColor = nil;
+        stroke.strokeColor = [UIColor blackColor].CGColor;
+        stroke.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(glass.bounds, 0.5, 0.5) cornerRadius:MAX(0, radius - 0.5)].CGPath;
+        [CATransaction commit];
+    }
+    host.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:host.bounds cornerRadius:radius].CGPath;
+}
+
+// Places the menu in the floating toolbar's slot (same bottom edge and centre, at least the same width),
+// widened up to the screen margins when eight 44 pt actions need it, or in two rows when even that is too narrow.
+// Uses the toolbar's laid-out bounds/center, which the minimise transform does not change.
+- (void) mb_layoutSelectionMenu{
+
+    UIView *menu = self.selectionMenuContainer;
+    UIToolbar *toolbar = self.bottomToolBar;
+    if (menu == nil || menu.superview != self.view || toolbar == nil || self.floatingBarTop <= 0) return;
+
+    CGRect bounds = self.view.bounds;
+    UIEdgeInsets safe = self.view.safeAreaInsets;
+
+    CGFloat groupLeft = toolbar.center.x - toolbar.bounds.size.width / 2.0;
+    CGFloat groupRight = toolbar.center.x + toolbar.bounds.size.width / 2.0;
+    if (self.searchGlassView) {
+        groupRight = self.searchGlassView.center.x + self.searchGlassView.bounds.size.width / 2.0;
+    }
+    CGFloat groupWidth = groupRight - groupLeft;
+    CGFloat groupCenterX = groupLeft + groupWidth / 2.0;
+    CGFloat bottom = self.floatingBarTop + kGlassBarHeight;
+
+    CGFloat minX = safe.left + kSelectionScreenMargin;
+    CGFloat maxX = bounds.size.width - safe.right - kSelectionScreenMargin;
+    CGFloat maxWidth = MAX(0, maxX - minX);
+
+    NSArray *buttons = self.selectionMenuButtons;
+    NSUInteger buttonCount = buttons.count;   // 8
+    CGFloat oneRowWidth = buttonCount * kSelectionTarget + 2 * kSelectionPadding;
+    BOOL twoRows = oneRowWidth > maxWidth;
+
+    CGFloat width;
+    CGFloat height;
+    if (!twoRows) {
+        width = MIN(MAX(groupWidth, oneRowWidth), maxWidth);
+        height = kGlassBarHeight;
+    } else {
+        width = MIN(MAX(groupWidth, 5 * kSelectionTarget + 2 * kSelectionPadding), maxWidth);
+        height = 2 * kSelectionTarget + kSelectionRowGap + 2 * kSelectionPadding;
+    }
+    width = round(width);
+    height = round(height);
+    CGFloat left = round(MIN(MAX(groupCenterX - width / 2.0, minX), MAX(minX, maxX - width)));
+    CGFloat top = round(bottom - height);
+
+    menu.bounds = CGRectMake(0, 0, width, height);
+    menu.center = CGPointMake(left + width / 2.0, top + height / 2.0);
+    [self mb_updateSelectionGlass:self.selectionMenuGlass inHost:menu cornerRadius:MIN(kSelectionCornerRadius, height / 2.0)];
+
+    // Actions: equal cells, never narrower than 44 pt.
+    CGFloat innerWidth = width - 2 * kSelectionPadding;
+    if (!twoRows) {
+        CGFloat cell = innerWidth / buttonCount;
+        for (NSUInteger i = 0; i < buttonCount; i++) {
+            UIButton *button = buttons[i];
+            button.frame = CGRectMake(kSelectionPadding + i * cell, round((height - kSelectionTarget) / 2.0), cell, kSelectionTarget);
+        }
+    } else {
+        // Row 1: the five colours. Row 2: Bookmark, Share, off.
+        NSArray *swatches = self.selectionMenuSwatches;
+        NSArray *actions = @[buttons[0], buttons[1], self.selectionMenuOffButton];
+        CGFloat swatchCell = innerWidth / swatches.count;
+        for (NSUInteger i = 0; i < swatches.count; i++) {
+            UIButton *button = swatches[i];
+            button.frame = CGRectMake(kSelectionPadding + i * swatchCell, kSelectionPadding, swatchCell, kSelectionTarget);
+        }
+        CGFloat actionCell = innerWidth / actions.count;
+        for (NSUInteger i = 0; i < actions.count; i++) {
+            UIButton *button = actions[i];
+            button.frame = CGRectMake(kSelectionPadding + i * actionCell, kSelectionPadding + kSelectionTarget + kSelectionRowGap, actionCell, kSelectionTarget);
+        }
+    }
+    for (UIButton *swatch in self.selectionMenuSwatches) {
+        UIView *dot = [swatch viewWithTag:kTagSelectionSwatchDot];
+        dot.center = CGPointMake(swatch.bounds.size.width / 2.0, swatch.bounds.size.height / 2.0);
+    }
+
+    // Count label, centred above the menu.
+    UIView *countHost = self.selectionCountContainer;
+    UILabel *countLabel = self.selectionCountLabel;
+    countLabel.text = [self mb_selectionCountText];
+    CGSize textSize = [countLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, kSelectionCountHeight)];
+    CGFloat countWidth = MIN(ceil(textSize.width) + 24.0, maxWidth);
+    CGFloat countLeft = round(MIN(MAX(menu.center.x - countWidth / 2.0, minX), MAX(minX, maxX - countWidth)));
+    CGFloat countTop = top - kSelectionCountGap - kSelectionCountHeight;
+    countHost.bounds = CGRectMake(0, 0, countWidth, kSelectionCountHeight);
+    countHost.center = CGPointMake(countLeft + countWidth / 2.0, countTop + kSelectionCountHeight / 2.0);
+    [self mb_updateSelectionGlass:self.selectionCountGlass inHost:countHost cornerRadius:kSelectionCountHeight / 2.0];
+    countLabel.frame = self.selectionCountGlass.contentView.bounds;
+    countHost.accessibilityElements = @[countLabel];
+
+    [self.view bringSubviewToFront:menu];
+    [self.view bringSubviewToFront:countHost];
+
+    if (self.isSelectionMenuVisible) {
+        self.selectionMenuTop = countTop;
+        [self updateContentInsetsForBottomToolbar];   // last verse stays clear of the menu and the count label
+    }
+}
+
+#pragma mark Selection menu visibility
+
+// The only place that switches between the floating toolbar + Search circle and the selection menu.
+- (void) mb_setSelectionMenuVisible:(BOOL)visible animated:(BOOL)animated{
+
+    if (visible) {
+        [self mb_installSelectionMenuIfNeeded];
+        if (self.selectionMenuContainer == nil) return;
+    }
+
+    UIView *menu = self.selectionMenuContainer;
+    UIView *countHost = self.selectionCountContainer;
+
+    if (visible == self.isSelectionMenuVisible) {
+        if (visible) [self mb_layoutSelectionMenu];   // count changed
+        return;
+    }
+    self.isSelectionMenuVisible = visible;
+    self.selectionOutsideTap.enabled = visible && !self.isSelectionSharePresented;
+
+    // Floating toolbar and Search circle: hidden flag only.
+    self.bottomToolBar.hidden = visible;
+    self.searchGlassView.hidden = visible;
+    self.searchGlassShadow.hidden = visible;
+
+    NSTimeInterval duration = animated ? 0.2 : 0.0;
+    UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState|UIViewAnimationOptionAllowUserInteraction;
+
+    if (visible) {
+        [self mb_styleSelectionMenu];
+        menu.hidden = NO;
+        countHost.hidden = NO;
+        menu.userInteractionEnabled = YES;
+        countHost.userInteractionEnabled = YES;   // absorbs taps so they are not taken as outside taps
+        [self mb_layoutSelectionMenu];
+        [UIView animateWithDuration:duration delay:0 options:options animations:^{
+            menu.alpha = 1.0;
+            countHost.alpha = 1.0;
+        } completion:nil];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, countHost);
+    } else {
+        self.selectionMenuTop = 0;
+        menu.userInteractionEnabled = NO;
+        countHost.userInteractionEnabled = NO;
+        [UIView animateWithDuration:duration delay:0 options:options animations:^{
+            menu.alpha = 0.0;
+            countHost.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            if (!self.isSelectionMenuVisible) {
+                menu.hidden = YES;
+                countHost.hidden = YES;
+            }
+        }];
+        [self mb_restoreFloatingBar];
+        [self updateContentInsetsForBottomToolbar];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, nil);
+    }
+}
+
+// Shows the menu while verses are selected and restores the floating toolbar when none are.
+- (void) mb_syncSelectionMenu{
+
+    [self mb_setSelectionMenuVisible:(self.arrayToMookmark.count > 0) animated:YES];
+}
+
+// A new page is about to replace the current chapter. The row indexes may already refer to the new chapter's
+// verses, so the selection is dropped without running any JavaScript on them.
+- (void) mb_discardSelectionForReload{
+
+    if (self.arrayToMookmark.count == 0 && !self.isSelectionMenuVisible) return;
+    [[self.view viewWithTag:kTagShareToolbar] removeFromSuperview];
+    [self.arrayToMookmark removeAllObjects];
+    [self mb_setSelectionMenuVisible:NO animated:NO];
+}
+
+#pragma mark Selection menu actions
+
+- (void) mb_selectionMenuButtonTapped:(UIButton *)sender{
+
+    if (!self.isSelectionMenuVisible || self.isSelectionSharePresented) return;
+    if (self.arrayToMookmark.count == 0) {
+        [self mb_setSelectionMenuVisible:NO animated:YES];
+        return;
+    }
+
+    [self mb_sortSelection];
+
+    if (sender.tag == kActionShare) {
+        [self mb_presentShareSheetFromView:sender];
+        return;
+    }
+    // Bookmark (13), colours (1-5) and off (6): existing handler, unchanged. It ends with clearSelections.
+    [self buttonClickedWithTag:sender.tag];
+}
+
+- (void) mb_presentShareSheetFromView:(UIView *)sourceView{
+
+    if (self.presentedViewController != nil || self.navigationController.presentedViewController != nil) return;
+
+    NSString *text = [self mb_selectedVersesPlainText];
+    if (text.length == 0) return;
+
+    UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[text] applicationActivities:nil];
+    UIPopoverPresentationController *popoverPresentation = activity.popoverPresentationController;
+    if (popoverPresentation != nil) {   // iPad
+        popoverPresentation.sourceView = sourceView;
+        popoverPresentation.sourceRect = sourceView.bounds;
+        popoverPresentation.permittedArrowDirections = UIPopoverArrowDirectionDown|UIPopoverArrowDirectionUp;
+    }
+
+    // The selection and the menu stay while the sheet is open; outside taps and menu taps are ignored.
+    self.isSelectionSharePresented = YES;
+    self.selectionOutsideTap.enabled = NO;
+
+    __weak MalayalamBibleDetailViewController *weakSelf = self;
+    activity.completionWithItemsHandler = ^(UIActivityType activityType, BOOL completed, NSArray *returnedItems, NSError *activityError) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf mb_shareSheetDidFinish];
+        });
+    };
+    [self presentViewController:activity animated:YES completion:nil];
+}
+
+// Shared, cancelled, swiped down or (iPad) tapped outside: end the selection and restore the floating toolbar.
+- (void) mb_shareSheetDidFinish{
+
+    self.isSelectionSharePresented = NO;
+    if (self.arrayToMookmark.count > 0) {
+        [self clearSelections];
+    } else {
+        [self mb_setSelectionMenuVisible:NO animated:YES];
+    }
+}
+
+// A tap on the reading area that is not on a verse (or a verse number) ends the selection.
+// Taps on verses keep going through verseClicked: as before. Anything uncertain does not clear.
+- (void) mb_handleSelectionOutsideTap:(UITapGestureRecognizer *)recognizer{
+
+    if (recognizer.state != UIGestureRecognizerStateRecognized) return;
+    if (!self.isSelectionMenuVisible || self.isSelectionSharePresented || self.arrayToMookmark.count == 0) return;
+    if (self.presentedViewController != nil) return;
+
+    CGPoint pointInView = [recognizer locationInView:self.view];
+    for (UIView *host in @[self.selectionMenuContainer, self.selectionCountContainer]) {
+        if (!host.hidden && CGRectContainsPoint(host.frame, pointInView)) return;   // never an outside tap
+    }
+
+    UIScrollView *scrollView = self.webViewVerses.scrollView;
+    CGPoint pointInContent = [recognizer locationInView:scrollView];
+    CGFloat zoom = scrollView.zoomScale > 0 ? scrollView.zoomScale : 1.0;
+    NSString *script = [NSString stringWithFormat:
+                        @"(function(x,y){var e=document.elementFromPoint(x-window.pageXOffset,y-window.pageYOffset);"
+                        @"if(!e){return 'none';}"
+                        @"while(e){if(e.tagName==='A'){return 'verse';}if(e.id&&e.id.indexOf('Font-')===0){return 'verse';}e=e.parentElement;}"
+                        @"return 'outside';})(%d,%d)",
+                        (int)round(pointInContent.x / zoom), (int)round(pointInContent.y / zoom)];
+    NSString *hit = [self.webViewVerses stringByEvaluatingJavaScriptFromString:script];
+    if (![hit isEqualToString:@"outside"]) return;
+
+    [self clearSelections];
 }
 
 
@@ -2041,6 +2606,7 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     
     [[self.view viewWithTag:kTagShareToolbar] removeFromSuperview];
     [self.arrayToMookmark removeAllObjects];
+    [self mb_setSelectionMenuVisible:NO animated:NO];//+20261117 new chapter: no selection, floating toolbar restored
     
     
     MalayalamBibleAppDelegate *appDelegate =   [[UIApplication sharedApplication] delegate];
@@ -3332,6 +3898,7 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     }
     
     [self.arrayToMookmark removeAllObjects];
+    [self mb_setSelectionMenuVisible:NO animated:YES];//+20261117 restore the floating toolbar and Search circle
     
     
 }
@@ -3489,36 +4056,8 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
             
             //make objects as NSNumber and sort
             
-            NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
-            NSString *secondaryL = kLangNone;
-            if(dictPref !=nil ){
-                secondaryL = [dictPref valueForKey:@"secondaryLanguage"];
-            }
-            
-            
-            NSMutableString *verseStr = [[NSMutableString alloc] init ];
-            [verseStr appendFormat:@"%@", self.selectedBook.shortName];
-            [verseStr appendFormat:@" %li", (long)self.chapterId];
-            
-            NSUInteger countV = [self.arrayToMookmark count];
-            
-            if(countV == 0){
-                
-                
-            }else if(countV == 1 && [secondaryL isEqualToString:kLangNone]){
-                
-                NSDictionary *dict = [self.bVerses objectAtIndex:[[self.arrayToMookmark objectAtIndex:0] integerValue]];
-                [verseStr appendFormat:@" : %@\n", [dict valueForKey:@"verse_text"]];
-                
-            }else{
-                
-                [verseStr appendFormat:@"\n"];
-                for(NSUInteger i=0; i<countV ; i++ ){
-                    
-                    NSDictionary *dict = [self.bVerses objectAtIndex:[[self.arrayToMookmark objectAtIndex:i] integerValue]];
-                    [verseStr appendFormat:@"%@\n", [dict valueForKey:@"verse_text"]];
-                }
-            }
+            //+20261117 text built by mb_selectedVersesPlainText (moved unchanged; Share uses the same text)
+            NSString *verseStr = [self mb_selectedVersesPlainText];
             
             
             UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
@@ -4073,7 +4612,7 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
         
     }else{
         
-        
+        [self mb_discardSelectionForReload];//+20261117 a new page replaces this chapter
     }
     
     return YES;
@@ -4128,6 +4667,7 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
     
     
+    if (kMBUseLegacyShareToolbar) {//+20261117 legacy share toolbar beside the verse (replaced by the selection action menu)
     UIToolbar *toolBarShare = (UIToolbar *)[self.view viewWithTag:kTagShareToolbar];
     
     
@@ -4261,6 +4801,9 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
         
         [[self.view viewWithTag:kTagShareToolbar] removeFromSuperview];
     }
+    }//+20261117 end of legacy share toolbar
+
+    [self mb_syncSelectionMenu];//+20261117 selection action menu (count, show/hide)
     
     /*
      
