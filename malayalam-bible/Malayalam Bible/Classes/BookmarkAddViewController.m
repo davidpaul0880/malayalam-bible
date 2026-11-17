@@ -96,6 +96,25 @@
         }
         //self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
+
+    //+20261117 Night mode: this screen follows the app's own Night mode (kNightTime) instead of the iOS
+    // appearance, so the system colours it does not set itself (section headers, description field text and
+    // placeholder, keyboard, disclosure arrow) match the black or white table.
+    self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+
+    //+20261117 Navigation bar: iOS 15+ draws bars from UIBarAppearance objects. barTintColor (set above) only
+    // reaches the scrolled state; at the top of the list the bar was transparent and showed a white background
+    // behind the white Night mode title. Set on this screen's navigationItem only, so the shared bar and other
+    // screens in this navigation controller keep their own styling.
+    UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+    [barAppearance configureWithOpaqueBackground];
+    barAppearance.backgroundColor = isdark ? [UIColor blackColor] : [UIColor whiteColor];
+    UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+    scrollEdgeAppearance.shadowColor = [UIColor clearColor];   // no divider at the top of the list, as before
+    self.navigationItem.standardAppearance = barAppearance;
+    self.navigationItem.compactAppearance = barAppearance;
+    self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+    self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
         
 
     
