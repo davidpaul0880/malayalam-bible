@@ -106,6 +106,8 @@ __VA_ARGS__ \
 - (void) mb_restoreFloatingBar;
 - (void) mb_setFloatingBarMinimized:(BOOL)minimized animated:(BOOL)animated;
 - (void) mb_trackScrollForFloatingBar:(UIScrollView *)scrollView;
+- (void)mb_applyNavigationBarAppearanceDark:(BOOL)isDark;
+- (void)mb_applyTransparentToolbarAppearance;
 
 @end
 
@@ -1338,6 +1340,7 @@ typedef enum ScrollDirection {
                                                object:nil];
     
     [super viewWillAppear:animated];
+    [self mb_applyNavigationBarAppearanceDark:[[NSUserDefaults standardUserDefaults] boolForKey:kNightTime]];//+20261117
     
     
     
@@ -1465,6 +1468,7 @@ typedef enum ScrollDirection {
         
         changedColor = [UIColor blackColor];
         [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+        [self mb_applyNavigationBarAppearanceDark:YES];//+20261117 Night mode: solid black navigation bar
         
         
         /*if (isos7){
@@ -1482,6 +1486,7 @@ typedef enum ScrollDirection {
         
         changedColor = [UIColor whiteColor];
         [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault animated:YES];
+        [self mb_applyNavigationBarAppearanceDark:NO];//+20261117
         
          /*if (isos7){
              NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -1707,6 +1712,60 @@ static const CGFloat kGlassShowThreshold = 12.0;
     layer.shadowOpacity = [self usesNativeLiquidGlass] ? 0.0f : (isdark ? 0.32f : 0.10f);
 }
 
+#pragma mark Night mode bar appearance (+20261117)
+
+// iOS 15+ draws bars from UIBarAppearance objects. Without them the navigation bar falls back to a
+// transparent look at the scroll edge (top of the text) and shows the navigation controller's white
+// system background, because the app's Night mode is independent of the system style.
+// The appearance is set on this screen's navigationItem (always honoured for this screen, even if
+// another screen later changes the shared bar) and on the navigation bar itself.
+- (void)mb_applyNavigationBarAppearanceDark:(BOOL)isDark {
+    if (@available(iOS 15.0, *)) {
+        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+        if (isDark) {
+            [appearance configureWithOpaqueBackground];
+            appearance.backgroundColor = [UIColor blackColor];
+            appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
+            appearance.largeTitleTextAttributes = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
+            appearance.shadowColor = [UIColor colorWithWhite:0.25 alpha:1.0];
+        } else {
+            [appearance configureWithDefaultBackground];
+        }
+
+        UINavigationItem *item = self.navigationItem;
+        item.standardAppearance = appearance;
+        item.scrollEdgeAppearance = appearance;
+        item.compactAppearance = appearance;
+        item.compactScrollEdgeAppearance = appearance;
+
+        UINavigationBar *bar = self.navigationController.navigationBar;
+        MBLog(@"mb_applyNavigationBarAppearanceDark:%d navigationController=%@", isDark, self.navigationController);
+        if (bar != nil) {
+            bar.standardAppearance = appearance;
+            bar.scrollEdgeAppearance = appearance;
+            bar.compactAppearance = appearance;
+            bar.compactScrollEdgeAppearance = appearance;
+        }
+    }
+}
+
+// The floating capsule is self.bottomToolBar (a standalone UIToolbar); the navigation controller's
+// own toolbar is not shown by this app but gets the same transparent appearance.
+- (void)mb_applyTransparentToolbarAppearance {
+    if (@available(iOS 15.0, *)) {
+        UIToolbarAppearance *appearance = [[UIToolbarAppearance alloc] init];
+        [appearance configureWithTransparentBackground];
+        appearance.shadowColor = [UIColor clearColor];
+        for (UIToolbar *toolbar in @[self.bottomToolBar ?: [NSNull null], self.navigationController.toolbar ?: [NSNull null]]) {
+            if ((id)toolbar == [NSNull null]) continue;
+            toolbar.standardAppearance = appearance;
+            toolbar.compactAppearance = appearance;
+            toolbar.scrollEdgeAppearance = appearance;
+            toolbar.compactScrollEdgeAppearance = appearance;
+        }
+    }
+}
+
 - (void) applyGlassStyleToBottomToolbar{
 
     UIToolbar *toolbar = self.bottomToolBar;
@@ -1722,6 +1781,7 @@ static const CGFloat kGlassShowThreshold = 12.0;
     toolbar.translucent = YES;
     toolbar.backgroundColor = [UIColor clearColor];
     toolbar.clipsToBounds = NO;
+    [self mb_applyTransparentToolbarAppearance];//+20261117
 
     UIVisualEffectView *glass = (UIVisualEffectView *)[toolbar viewWithTag:kTagGlassBackground];
     if (glass == nil) {
