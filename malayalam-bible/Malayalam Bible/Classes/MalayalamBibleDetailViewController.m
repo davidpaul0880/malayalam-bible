@@ -89,6 +89,24 @@ __VA_ARGS__ \
 
 - (void) modeChangeDynamically;
 
+//+20261117 floating glass reading toolbar
+@property (strong, nonatomic) UIVisualEffectView *searchGlassView;
+@property (strong, nonatomic) UIView *searchGlassShadow;
+@property (strong, nonatomic) UIButton *searchGlassButton;
+@property (nonatomic, assign) BOOL isFloatingBarMinimized;
+@property (nonatomic, assign) CGFloat floatingBarAccumulated;
+@property (nonatomic, assign) CGFloat floatingBarLastOffset;
+@property (nonatomic, assign) CGFloat floatingBarTop;
+
+- (void) applyGlassStyleToBottomToolbar;
+- (void) updateContentInsetsForBottomToolbar;
+- (void) layoutBottomToolbar;
+- (void) mb_installSearchButtonIfNeeded;
+- (void) mb_updateGlassGeometry;
+- (void) mb_restoreFloatingBar;
+- (void) mb_setFloatingBarMinimized:(BOOL)minimized animated:(BOOL)animated;
+- (void) mb_trackScrollForFloatingBar:(UIScrollView *)scrollView;
+
 @end
 
 typedef enum ScrollDirection {
@@ -552,7 +570,6 @@ typedef enum ScrollDirection {
     
     //if(!isFullScreen){
         MBLog(@"hide bars");
-        CGRect rectToolbar = self.bottomToolBar.frame;
         [[self.view viewWithTag:kTagFullScreenView] removeFromSuperview];
         
         CGRect tableRect =  self.webViewVerses.frame;
@@ -570,13 +587,9 @@ typedef enum ScrollDirection {
         
         [[UIApplication sharedApplication] setStatusBarHidden:NO];
         //ToDO os checks
-    CGFloat safeAreaBottom = 0;
-        if (@available(iOS 11, *)) {
-            safeAreaBottom = [UIApplication sharedApplication].keyWindow.safeAreaInsets.bottom;
-        }
-            
-        rectToolbar.origin.y = self.view.frame.size.height-safeAreaBottom-rectToolbar.size.height+1;
-        self.bottomToolBar.frame = rectToolbar;
+        //+20261117 the floating toolbar is positioned only by layoutBottomToolbar (safe-area based)
+        [self layoutBottomToolbar];
+        [self mb_restoreFloatingBar];
         
         self.navigationController.navigationBarHidden = NO;
         
@@ -1151,7 +1164,8 @@ typedef enum ScrollDirection {
         safeAreaBottom = [UIApplication sharedApplication].keyWindow.safeAreaInsets.bottom;
     }
     self.bottomToolBar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, self.view.frame.size.height-safeAreaBottom-44, self.view.frame.size.width, 45)];
-    self.bottomToolBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin;
+    //+20261117 floating capsule; positioned only by layoutBottomToolbar (bounds + center)
+    self.bottomToolBar.autoresizingMask = UIViewAutoresizingNone;
     if([UIDeviceHardware isOS7Device]){
         
         [self.bottomToolBar setBarTintColor:[UIColor whiteColor]];
@@ -1166,7 +1180,7 @@ typedef enum ScrollDirection {
     [self.view addSubview:self.bottomToolBar];
     [self.view addSubview:self.tableViewVerses];
     
-    //[self.view bringSubviewToFront:self.bottomToolBar];
+    [self.view bringSubviewToFront:self.bottomToolBar];//+20261116 keep the verse index strip from covering the toolbar
     
     
     
@@ -1513,11 +1527,361 @@ typedef enum ScrollDirection {
     
     
     if (isos7) self.bottomToolBar.barTintColor = changedColor;
-    
+
+    [self applyGlassStyleToBottomToolbar];//+20261116 glass bottom toolbar
+
     [self.tableViewVerses.backgroundView setNeedsDisplay];
     [self.tableViewVerses setNeedsDisplay];
     [self.webViewVerses setNeedsDisplay];
     [self.bottomToolBar setNeedsDisplay];
+}
+
+#pragma mark - Floating glass reading toolbar (+20261117)
+//
+// self.bottomToolBar (UIToolbar) holds four reading actions: Settings, Notes, Highlights, Bookmarks.
+// self.searchGlassView is a separate glass circle holding the Search button (doSearch:).
+// Sections: floating layout, glass styling, search button, scroll-responsive behaviour,
+// content inset management. Frames are never set while a transform is active: layout uses
+// bounds + center so the minimise animation (a transform) and layout cannot fight.
+
+static const NSInteger kTagGlassBackground = 7301;
+static const NSInteger kTagGlassRim = 7302;
+static const CGFloat kGlassBarHeight = 56.0;
+static const CGFloat kGlassSideMargin = 16.0;
+static const CGFloat kGlassMaxGroupWidth = 460.0;
+static const CGFloat kGlassSearchGap = 10.0;
+static const CGFloat kGlassGapAboveHomeIndicator = 6.0;
+static const CGFloat kGlassGapWithoutHomeIndicator = 10.0;
+static const CGFloat kGlassContentSpacing = 8.0;
+static const CGFloat kGlassHideThreshold = 24.0;
+static const CGFloat kGlassShowThreshold = 12.0;
+
+- (BOOL) usesNativeLiquidGlass{
+
+    if (@available(iOS 26.0, *)) {
+        id optOut = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"UIDesignRequiresCompatibility"];
+        return ![optOut boolValue];
+    }
+    return NO;
+}
+
+#pragma mark Floating layout
+
+// Places the four-action capsule and the Search circle as one horizontally centred group,
+// above the bottom safe area / Home Indicator, using the view's own safe area.
+- (void) layoutBottomToolbar{
+
+    UIToolbar *toolbar = self.bottomToolBar;
+    if (toolbar == nil || toolbar.superview != self.view) return;
+
+    CGRect bounds = self.view.bounds;
+    UIEdgeInsets safe = self.view.safeAreaInsets;
+    CGFloat usableWidth = bounds.size.width - safe.left - safe.right;
+    CGFloat groupWidth = MIN(usableWidth - 2 * kGlassSideMargin, kGlassMaxGroupWidth);
+    CGFloat gap = safe.bottom > 0 ? kGlassGapAboveHomeIndicator : kGlassGapWithoutHomeIndicator;
+    CGFloat top = round(bounds.size.height - safe.bottom - gap - kGlassBarHeight);
+    CGFloat left = round(safe.left + (usableWidth - groupWidth) / 2.0);
+
+    UIView *search = self.searchGlassView;
+    CGFloat capsuleWidth = search ? groupWidth - kGlassBarHeight - kGlassSearchGap : groupWidth;
+
+    toolbar.bounds = CGRectMake(0, 0, round(capsuleWidth), kGlassBarHeight);
+    toolbar.center = CGPointMake(left + round(capsuleWidth) / 2.0, top + kGlassBarHeight / 2.0);
+
+    if (search) {
+        search.bounds = CGRectMake(0, 0, kGlassBarHeight, kGlassBarHeight);
+        search.center = CGPointMake(left + groupWidth - kGlassBarHeight / 2.0, top + kGlassBarHeight / 2.0);
+        [self.view bringSubviewToFront:search];
+    }
+    [self.view bringSubviewToFront:toolbar];   // verse-index strip never covers the controls
+
+    self.floatingBarTop = top;                 // layout position, unaffected by the minimise transform
+
+    [self mb_updateGlassGeometry];
+    [self hideSharedBackgroundsOfBottomToolbarItems];
+    [self updateContentInsetsForBottomToolbar];
+}
+
+#pragma mark Glass styling
+
+- (UIVisualEffect *) mb_glassEffectDark:(BOOL)isdark interactive:(BOOL)interactive{
+
+    if ([self usesNativeLiquidGlass]) {
+        if (@available(iOS 26.0, *)) {
+            UIGlassEffect *glass = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+            glass.interactive = interactive;
+            return glass;
+        }
+    }
+    return [UIBlurEffect effectWithStyle:(isdark ? UIBlurEffectStyleSystemUltraThinMaterialDark : UIBlurEffectStyleSystemUltraThinMaterialLight)];
+}
+
+// iOS 26+: stop the system drawing its own glass platter behind each toolbar item,
+// so the capsule is the only glass (no glass on glass).
+- (void) hideSharedBackgroundsOfBottomToolbarItems{
+
+    if (![self usesNativeLiquidGlass]) return;
+    if (@available(iOS 26.0, *)) {
+        for (UIBarButtonItem *item in self.bottomToolBar.items) {
+            if (!item.hidesSharedBackground) item.hidesSharedBackground = YES;
+        }
+    }
+}
+
+// Styles one glass surface (capsule background or Search circle).
+- (void) mb_styleGlassView:(UIVisualEffectView *)glass dark:(BOOL)isdark interactive:(BOOL)interactive{
+
+    glass.effect = [self mb_glassEffectDark:isdark interactive:interactive];
+    glass.layer.cornerCurve = kCACornerCurveContinuous;
+    glass.clipsToBounds = YES;
+
+    UIView *rim = [glass.contentView viewWithTag:kTagGlassRim];
+
+    if ([self usesNativeLiquidGlass]) {
+        // Native Liquid Glass draws its own rim and depth.
+        glass.contentView.backgroundColor = nil;
+        [rim removeFromSuperview];
+        return;
+    }
+
+    // iOS 15.6–25: subtle tint + a rim that is brighter along the top edge.
+    glass.contentView.backgroundColor = isdark ? [UIColor colorWithWhite:0.08 alpha:0.32] : [UIColor colorWithWhite:1.0 alpha:0.38];
+    if (rim == nil) {
+        rim = [[UIView alloc] initWithFrame:glass.contentView.bounds];
+        rim.tag = kTagGlassRim;
+        rim.userInteractionEnabled = NO;
+        rim.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+        CAGradientLayer *gradient = [CAGradientLayer layer];
+        gradient.mask = [CAShapeLayer layer];
+        [rim.layer addSublayer:gradient];
+        [glass.contentView addSubview:rim];
+    }
+    CAGradientLayer *gradient = (CAGradientLayer *)rim.layer.sublayers.firstObject;
+    gradient.colors = @[(id)[UIColor colorWithWhite:1.0 alpha:(isdark ? 0.24 : 0.80)].CGColor,
+                        (id)[UIColor colorWithWhite:(isdark ? 1.0 : 0.0) alpha:(isdark ? 0.05 : 0.08)].CGColor];
+}
+
+// Corner radius, rim path and shadow path follow the current size (called from layout).
+- (void) mb_updateGlassGeometry{
+
+    NSArray *hosts = self.searchGlassView ? @[self.bottomToolBar, self.searchGlassView] : @[self.bottomToolBar];
+    for (UIView *host in hosts) {
+
+        UIVisualEffectView *glass = (host == self.bottomToolBar) ? (UIVisualEffectView *)[host viewWithTag:kTagGlassBackground] : (UIVisualEffectView *)host;
+        if (glass == nil) continue;
+        if (host == self.bottomToolBar) glass.frame = host.bounds;
+
+        CGFloat radius = host.bounds.size.height / 2.0;
+        glass.layer.cornerRadius = radius;
+
+        UIView *rim = [glass.contentView viewWithTag:kTagGlassRim];
+        CAGradientLayer *gradient = (CAGradientLayer *)rim.layer.sublayers.firstObject;
+        if (gradient) {
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            gradient.frame = glass.bounds;
+            CAShapeLayer *stroke = (CAShapeLayer *)gradient.mask;
+            stroke.frame = glass.bounds;
+            stroke.lineWidth = 1.0;
+            stroke.fillColor = nil;
+            stroke.strokeColor = [UIColor blackColor].CGColor;
+            stroke.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(glass.bounds, 0.5, 0.5) cornerRadius:MAX(0, radius - 0.5)].CGPath;
+            [CATransaction commit];
+        }
+
+        CALayer *shadowLayer = (host == self.bottomToolBar) ? host.layer : self.searchGlassShadow.layer;
+        shadowLayer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:host.bounds cornerRadius:radius].CGPath;
+    }
+    if (self.searchGlassView) {
+        self.searchGlassShadow.bounds = self.searchGlassView.bounds;
+        self.searchGlassShadow.center = self.searchGlassView.center;
+    }
+}
+
+- (void) mb_applyShadowToLayer:(CALayer *)layer dark:(BOOL)isdark{
+
+    layer.shadowColor = [UIColor blackColor].CGColor;
+    layer.shadowOffset = CGSizeMake(0, 8);
+    layer.shadowRadius = 20.0;
+    // Native glass has its own depth; the soft ambient shadow is for the blur fallback only.
+    layer.shadowOpacity = [self usesNativeLiquidGlass] ? 0.0f : (isdark ? 0.32f : 0.10f);
+}
+
+- (void) applyGlassStyleToBottomToolbar{
+
+    UIToolbar *toolbar = self.bottomToolBar;
+    if (toolbar == nil) return;
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+
+    // The bar itself draws nothing; the glass view is its only background.
+    toolbar.overrideUserInterfaceStyle = style;
+    [toolbar setBackgroundImage:[UIImage new] forToolbarPosition:UIBarPositionAny barMetrics:UIBarMetricsDefault];
+    [toolbar setShadowImage:[UIImage new] forToolbarPosition:UIBarPositionAny];
+    toolbar.translucent = YES;
+    toolbar.backgroundColor = [UIColor clearColor];
+    toolbar.clipsToBounds = NO;
+
+    UIVisualEffectView *glass = (UIVisualEffectView *)[toolbar viewWithTag:kTagGlassBackground];
+    if (glass == nil) {
+        glass = [[UIVisualEffectView alloc] initWithEffect:nil];
+        glass.tag = kTagGlassBackground;
+        glass.frame = toolbar.bounds;
+        glass.userInteractionEnabled = NO;   // never intercepts the four buttons
+        [toolbar insertSubview:glass atIndex:0];
+    }
+    [self mb_styleGlassView:glass dark:isdark interactive:NO];
+    [self mb_applyShadowToLayer:toolbar.layer dark:isdark];
+
+    if (self.searchGlassView) {
+        self.searchGlassView.overrideUserInterfaceStyle = style;
+        [self mb_styleGlassView:self.searchGlassView dark:isdark interactive:YES];
+        [self mb_applyShadowToLayer:self.searchGlassShadow.layer dark:isdark];
+        self.searchGlassButton.tintColor = toolbar.tintColor;
+    }
+
+    [self hideSharedBackgroundsOfBottomToolbarItems];
+    [self layoutBottomToolbar];
+}
+
+#pragma mark Search button
+
+// Created once; resetBottomToolbar may run many times.
+- (void) mb_installSearchButtonIfNeeded{
+
+    if (self.searchGlassView != nil || self.bottomToolBar.superview == nil) return;
+
+    // Shadow lives on a separate, non-clipping view (the glass view clips to its circle).
+    UIView *shadow = [[UIView alloc] initWithFrame:CGRectZero];
+    shadow.userInteractionEnabled = NO;
+    shadow.backgroundColor = [UIColor clearColor];
+
+    UIVisualEffectView *circle = [[UIVisualEffectView alloc] initWithEffect:nil];
+    circle.frame = CGRectMake(0, 0, kGlassBarHeight, kGlassBarHeight);
+
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.frame = circle.contentView.bounds;
+    button.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    UIImage *icon = [UIImage systemImageNamed:@"magnifyingglass"
+                            withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium]];
+    [button setImage:icon forState:UIControlStateNormal];
+    [button addTarget:self action:@selector(doSearch:) forControlEvents:UIControlEventTouchUpInside];
+    button.accessibilityLabel = NSLocalizedString(@"Search", @"");
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+    button.pointerInteractionEnabled = YES;
+    [circle.contentView addSubview:button];
+
+    self.searchGlassShadow = shadow;
+    self.searchGlassView = circle;
+    self.searchGlassButton = button;
+    [self.view insertSubview:shadow belowSubview:self.bottomToolBar];
+    [self.view insertSubview:circle aboveSubview:shadow];
+}
+
+#pragma mark Scroll-responsive behaviour
+
+- (void) mb_setFloatingBarMinimized:(BOOL)minimized animated:(BOOL)animated{
+
+    if (self.isFloatingBarMinimized == minimized) return;   // no repeated animations
+    self.isFloatingBarMinimized = minimized;
+
+    UIToolbar *toolbar = self.bottomToolBar;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    CGFloat drop = kGlassBarHeight + self.view.safeAreaInsets.bottom + kGlassGapWithoutHomeIndicator;
+
+    toolbar.accessibilityElementsHidden = minimized;
+
+    void (^changes)(void) = ^{
+        toolbar.alpha = minimized ? 0.0 : 1.0;
+        toolbar.transform = (minimized && !reduceMotion) ? CGAffineTransformMakeTranslation(0, drop) : CGAffineTransformIdentity;
+        // Search stays reachable, a little smaller while reading.
+        CGAffineTransform searchTransform = (minimized && !reduceMotion) ? CGAffineTransformMakeScale(0.86, 0.86) : CGAffineTransformIdentity;
+        self.searchGlassView.transform = searchTransform;
+        self.searchGlassShadow.transform = searchTransform;
+    };
+
+    if (!animated) { changes(); return; }
+
+    UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState|UIViewAnimationOptionAllowUserInteraction;
+    if (reduceMotion) {
+        [UIView animateWithDuration:0.2 delay:0 options:options animations:changes completion:nil];
+    } else {
+        [UIView animateWithDuration:0.32 delay:0 usingSpringWithDamping:0.9 initialSpringVelocity:0 options:options animations:changes completion:nil];
+    }
+}
+
+- (void) mb_restoreFloatingBar{
+
+    self.floatingBarAccumulated = 0;
+    [self mb_setFloatingBarMinimized:NO animated:YES];
+}
+
+// Called from the existing scrollViewDidScroll:. Reacts only to the user's own scrolling of the
+// verses (finger down or flick still moving); auto-scroll and programmatic offsets are ignored.
+- (void) mb_trackScrollForFloatingBar:(UIScrollView *)scrollView{
+
+    if (scrollView != self.webViewVerses.scrollView) return;
+
+    CGFloat offset = scrollView.contentOffset.y;
+    CGFloat delta = offset - self.floatingBarLastOffset;
+    self.floatingBarLastOffset = offset;
+
+    if (!(scrollView.isTracking || scrollView.isDecelerating)) return;
+
+    CGFloat maxOffset = scrollView.contentSize.height + scrollView.contentInset.bottom - scrollView.bounds.size.height;
+    if (offset <= 0 || offset >= maxOffset - 1.0) {   // chapter start or end
+        [self mb_restoreFloatingBar];
+        return;
+    }
+
+    if ((delta > 0) != (self.floatingBarAccumulated > 0)) self.floatingBarAccumulated = 0;
+    self.floatingBarAccumulated += delta;
+
+    if (self.floatingBarAccumulated > kGlassHideThreshold) {
+        [self mb_setFloatingBarMinimized:YES animated:YES];
+    } else if (self.floatingBarAccumulated < -kGlassShowThreshold) {
+        [self mb_setFloatingBarMinimized:NO animated:YES];
+    }
+}
+
+#pragma mark Content inset management
+
+static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
+
+    if (scrollView == nil) return;
+    UIEdgeInsets contentInset = scrollView.contentInset;
+    if (fabs(contentInset.bottom - inset) < 0.5) return;
+    contentInset.bottom = inset;
+    scrollView.contentInset = contentInset;
+    UIEdgeInsets indicatorInset = scrollView.verticalScrollIndicatorInsets;
+    indicatorInset.bottom = inset;
+    scrollView.verticalScrollIndicatorInsets = indicatorInset;
+}
+
+// The last verse and the last index entries scroll fully clear of the capsule and the Search circle.
+// Based on the layout position, so it stays the same while the capsule is minimised (no jumps).
+- (void) updateContentInsetsForBottomToolbar{
+
+    UIToolbar *toolbar = self.bottomToolBar;
+    if (toolbar == nil || toolbar.superview != self.view || self.floatingBarTop <= 0) return;
+
+    BOOL barShown = !toolbar.hidden;
+    CGFloat barTop = self.floatingBarTop;
+
+    CGRect webFrame = self.webViewVerses.frame;
+    CGFloat webInset = barShown ? MAX(0, CGRectGetMaxY(webFrame) - barTop + kGlassContentSpacing) : 0;
+    MBSetBottomContentInset(self.webViewVerses.scrollView, webInset);
+
+    CGRect tableFrame = self.tableViewVerses.frame;
+    CGFloat tableInset = barShown ? MAX(0, CGRectGetMaxY(tableFrame) - barTop + kGlassContentSpacing) : 0;
+    MBSetBottomContentInset(self.tableViewVerses, tableInset);
+}
+
+- (void)viewDidLayoutSubviews{
+
+    [super viewDidLayoutSubviews];
+    [self layoutBottomToolbar];
 }
 
 
@@ -1773,12 +2137,12 @@ typedef enum ScrollDirection {
                              animations:^{
                                  // Do your animations here.
                                  CGRect frame1 =  self.webViewVerses.frame;
-                                 frame1.origin.x = 	frame1.size.width;
+                                 frame1.origin.x =     frame1.size.width;
                                  self.webViewVerses.frame = frame1;
                                  
                                  
                                  CGRect framet1 =  self.tableViewVerses.frame;
-                                 framet1.origin.x += 	framet1.size.width;
+                                 framet1.origin.x +=     framet1.size.width;
                                  self.tableViewVerses.frame = framet1;
                                  
                              }
@@ -1888,7 +2252,7 @@ typedef enum ScrollDirection {
                              animations:^{
                                  // Do your animations here.
                                  CGRect frame1 =  self.webViewVerses.frame;
-                                 frame1.origin.x -= 	frame1.size.width;
+                                 frame1.origin.x -=     frame1.size.width;
                                  self.webViewVerses.frame = frame1;
                                  
                                  CGRect framet1 =  self.tableViewVerses.frame;
@@ -1940,7 +2304,7 @@ typedef enum ScrollDirection {
          [UIView setAnimationDuration:0.3];
          CGRect frame2 =  self.tableViewVerses.frame;
          
-         frame2.origin.x = 	0;
+         frame2.origin.x =     0;
          
          self.tableViewVerses.frame = frame2;
          [UIView commitAnimations];
@@ -2106,9 +2470,7 @@ typedef enum ScrollDirection {
     
     //UIBarButtonItem *flex1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     //UIBarButtonItem *flex2 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace                           target:nil action:nil];
-    UIBarButtonItem *flex3 = [[UIBarButtonItem alloc]
-                              initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
-                              target:nil action:nil];
+    //+20261117 flex3 was the spacer before Search; Search now lives in its own glass circle
     //+20130905UIBarButtonItem *flex4 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
     
@@ -2128,6 +2490,7 @@ typedef enum ScrollDirection {
     
     UIImage *imgSettings = [UIImage imageNamed:@"Gear.png"] ;//+20130418 Gear
     UIBarButtonItem *btnSettings = [[UIBarButtonItem alloc] initWithImage:imgSettings style:UIBarButtonItemStylePlain target:self action:@selector(showPreferences:)];
+    btnSettings.accessibilityLabel = NSLocalizedString(@"Settings", @"");//+20261117
     
     UIBarButtonItem *flex0 = [[UIBarButtonItem alloc]
                               initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
@@ -2168,6 +2531,7 @@ typedef enum ScrollDirection {
     
     
     UIBarButtonItem *barButtonItemColord = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"pencil.png"] style:UIBarButtonItemStylePlain target:self action:@selector(openColordVerses)];
+    barButtonItemColord.accessibilityLabel = NSLocalizedString(@"Highlights", @"");//+20261117
     
     [arrayOfTools addObject:barButtonItemColord];
     
@@ -2185,16 +2549,8 @@ typedef enum ScrollDirection {
     [arrayOfTools addObject:barButtonItem];
     
     
-    [arrayOfTools addObject:flex3];
-    
-    
-    
-    
-    
-    UIBarButtonItem *btnSearch = [[UIBarButtonItem alloc]
-                                  initWithBarButtonSystemItem:UIBarButtonSystemItemSearch
-                                  target:self action:@selector(doSearch:)];
-    [arrayOfTools addObject:btnSearch];
+    //+20261117 Search (doSearch:) is the separate glass circle, created once here
+    [self mb_installSearchButtonIfNeeded];
     
     
 //    UIBarButtonItem *flexPlay = [[UIBarButtonItem alloc]
@@ -2214,6 +2570,8 @@ typedef enum ScrollDirection {
     if ([UIDeviceHardware isOS7Device]) {
         self.bottomToolBar.tintColor = [UIColor defaultWindowColor];
     }
+    self.searchGlassButton.tintColor = self.bottomToolBar.tintColor;//+20261117
+    [self applyGlassStyleToBottomToolbar];//+20261117 style the new items and the Search circle
 }
 - (void) removeColorsFromDB{
     NSMutableString *versidss = [NSMutableString string];
@@ -3460,7 +3818,7 @@ typedef enum ScrollDirection {
 #pragma mark mail actions
 /**
  -(void)displayComposerSheet:(NSArray *)arraySelectedIndesPath{
-	
+    
  NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
  NSString *secondaryL = kLangNone;
  if(dictPref !=nil ){
@@ -3497,16 +3855,16 @@ typedef enum ScrollDirection {
  
  [emailBody appendFormat:@"\n%@", NSLocalizedString(@"MailFooter", @"footer message")];
  
-	MFMailComposeViewController *picker = [[MFMailComposeViewController alloc] init];
-	picker.mailComposeDelegate = self;
-	
-	[picker setSubject:@"Bible Verses"];
-	
-	[picker setMessageBody:emailBody isHTML:NO];
-	
-	[self.navigationController presentModalViewController:picker animated:YES];
-	
-	
+    MFMailComposeViewController *picker = [[MFMailComposeViewController alloc] init];
+    picker.mailComposeDelegate = self;
+    
+    [picker setSubject:@"Bible Verses"];
+    
+    [picker setMessageBody:emailBody isHTML:NO];
+    
+    [self.navigationController presentModalViewController:picker animated:YES];
+    
+    
  }
  **/
 - (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error{
@@ -3607,6 +3965,8 @@ typedef enum ScrollDirection {
     
     
     self.isWebViewLoaded = YES;
+    [self updateContentInsetsForBottomToolbar];//+20261117 new chapter content
+    [self mb_restoreFloatingBar];//+20261117
     //self.isJSWebViewLoaded = YES;
     //self.isLoaded = NO;
     MBLog(@"set no");
@@ -3960,6 +4320,7 @@ typedef enum ScrollDirection {
     
     
     [scrollView setContentOffset:CGPointMake(0, scrollView.contentOffset.y)];
+    [self mb_trackScrollForFloatingBar:scrollView];//+20261117
     if(self.isLoaded){
         
         /*
@@ -4297,6 +4658,3 @@ typedef enum ScrollDirection {
     
 }
 @end
-
-
-
