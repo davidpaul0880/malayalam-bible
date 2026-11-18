@@ -63,7 +63,9 @@
             self.tableView.backgroundColor = [UIColor blackColor];
             self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
             
-            self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
+            //+20261118 Night mode: the system separator colour for the dark surfaces below, instead of 30% white,
+            // which read as bright lines between the rows.
+            self.tableView.separatorColor = [UIColor separatorColor];
             
             /*NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
                                                        [UIColor whiteColor],UITextAttributeTextColor,
@@ -253,21 +255,35 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
         
         if (isdark ){
-            cell.backgroundColor = [UIColor darkGrayColor];
+            //+20261118 Night mode: iOS's dark grouped row surface (near-black grey, resolved through this screen's
+            // dark override) instead of darkGrayColor (#555), which made flat mid-grey bars on the black sheet and
+            // left the description placeholder with almost no contrast.
+            cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
         }
         
         if(indexPath.section == 1){
-            CGRect cellRect = [[cell contentView] frame];
-            UITextField *tfiled = [[UITextField alloc] initWithFrame:CGRectMake(10, 10, cellRect.size.width-10, cellRect.size.height-10)];
+            UITextField *tfiled = [[UITextField alloc] initWithFrame:CGRectZero];
             tfiled.delegate = self;
             tfiled.tag = 1+indexPath.section;
             [[cell contentView] addSubview:tfiled];
+            //+20261118 Layout: the field had a fixed frame taken from the 320 pt default cell width, so on the iPad
+            // sheet it stopped part-way across the row, and it started at a different indent from the verse and
+            // group rows. Pin it to the row's margins so it lines up with them and fills the row at any width.
+            tfiled.translatesAutoresizingMaskIntoConstraints = NO;
+            UILayoutGuide *margins = cell.contentView.layoutMarginsGuide;
+            [NSLayoutConstraint activateConstraints:@[
+                [tfiled.leadingAnchor constraintEqualToAnchor:margins.leadingAnchor],
+                [tfiled.trailingAnchor constraintEqualToAnchor:margins.trailingAnchor],
+                [tfiled.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor],
+                [tfiled.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor]
+            ]];
         }
     }
     
     if (isdark ){
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
-        cell.textLabel.textColor = [UIColor whiteColor];
+        //+20261118 Night mode: stay readable when the row is highlighted (black text on the dark highlight before).
+        cell.textLabel.highlightedTextColor = [UIColor labelColor];
+        cell.textLabel.textColor = [UIColor labelColor];
                 
     }
     
