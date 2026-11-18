@@ -15,12 +15,21 @@
 #import "UIDeviceHardware.h"
 #import "MBConstants.h"
 
+//+20261118 TEMPORARY DIAGNOSTICS (MBDIAG) — remove after the redesign is confirmed on screen.
+// The marker is a string in the compiled binary (`strings ... | grep MBDIAG-ADDBOOKMARK`), and every log line
+// carries the time this file was compiled, so the running build can be matched to this source.
+static NSString * const kMBDiagMarker = @"MBDIAG-ADDBOOKMARK-REDESIGN-v2-20261118";
+
 
 @interface BookmarkAddViewController ()
 
 
 @property (nonatomic, retain) UITextField *activeTextField;
 
+//+20261118 Redesign helpers (visual only)
+- (UIImage *) mb_iconTileForSymbol:(NSString *)symbolName;
+- (BOOL) mb_isLightColor:(UIColor *)color;
+- (void) mb_installAddBookmarkButton;
 
 @end
 
@@ -33,7 +42,10 @@
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
-    self = [super initWithStyle:style];
+    //+20261118 Redesign: rounded inset cards instead of full-width rows, like the Settings screen. The caller
+    // still passes UITableViewStyleGrouped; only this screen's look changes.
+    self = [super initWithStyle:UITableViewStyleInsetGrouped];
+    NSLog(@"[%@] initWithStyle: requested=%ld compiled=%s %s instance=%p class=%@", kMBDiagMarker, (long)style, __DATE__, __TIME__, self, NSStringFromClass([self class]));
     if (self) {
         // Custom initialization
         //MalayalamBibleAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
@@ -101,16 +113,28 @@
 
     //+20261117 Night mode: this screen follows the app's own Night mode (kNightTime) instead of the iOS
     // appearance, so the system colours it does not set itself (section headers, description field text and
-    // placeholder, keyboard, disclosure arrow) match the black or white table.
+    // placeholder, keyboard, disclosure arrow) match it.
     self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
 
+    //+20261118 Redesign: iOS grouped surfaces, the same as the Settings screen. Light: soft grey background
+    // with white cards. Night: black background with raised dark grey (#1C1C1E) cards. Replaces the white table
+    // (Light) and the black table set above (Night) on this screen only.
+    self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.tableView.separatorColor = [UIColor separatorColor];
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 60.0;
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+
     //+20261117 Navigation bar: iOS 15+ draws bars from UIBarAppearance objects. barTintColor (set above) only
-    // reaches the scrolled state; at the top of the list the bar was transparent and showed a white background
-    // behind the white Night mode title. Set on this screen's navigationItem only, so the shared bar and other
+    // reaches the scrolled state. Set on this screen's navigationItem only, so the shared bar and other
     // screens in this navigation controller keep their own styling.
+    //+20261118 Redesign: the bar uses the same grouped background as the screen, so bar and content read as
+    // one surface (as in Settings).
+    UITraitCollection *barTraits = [UITraitCollection traitCollectionWithUserInterfaceStyle:(isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight)];
     UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
     [barAppearance configureWithOpaqueBackground];
-    barAppearance.backgroundColor = isdark ? [UIColor blackColor] : [UIColor whiteColor];
+    barAppearance.backgroundColor = [[UIColor systemGroupedBackgroundColor] resolvedColorWithTraitCollection:barTraits];
+    barAppearance.shadowColor = isdark ? [UIColor colorWithWhite:1.0 alpha:0.25] : [[UIColor separatorColor] resolvedColorWithTraitCollection:barTraits];
     UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
     scrollEdgeAppearance.shadowColor = [UIColor clearColor];   // no divider at the top of the list, as before
     self.navigationItem.standardAppearance = barAppearance;
@@ -133,6 +157,7 @@
     }else{
         lblTitle.textColor = [UIColor blackColor];
     }
+    lblTitle.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];   //+20261118 Redesign: standard iOS title weight
     self.navigationItem.titleView = lblTitle;
     
     
@@ -140,12 +165,31 @@
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(saveClicked:)];
     
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelClicked:)];
+
+    //+20261118 Redesign: a prominent primary button below the cards (the Save button above stays).
+    [self mb_installAddBookmarkButton];
+    NSLog(@"[%@] viewDidLoad: instance=%p tableStyle=%ld (2=insetGrouped) footer=%@ nav=%@", kMBDiagMarker, self, (long)self.tableView.style, self.tableView.tableFooterView, self.navigationController);
     
     // Uncomment the following line to preserve selection between presentations.
     // self.clearsSelectionOnViewWillAppear = NO;
  
     // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+}
+
+//+20261118 TEMPORARY DIAGNOSTICS (MBDIAG): what is on screen once the view is about to appear and has appeared.
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    NSLog(@"[%@] viewWillAppear: instance=%p view=%@ tableView=%@ style=%ld", kMBDiagMarker, self, self.view, self.tableView, (long)self.tableView.style);
+}
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    NSLog(@"[%@] viewDidAppear: instance=%p presentedBy=%@ visibleCells=%lu footerFrame=%@ superviewOfTable=%@", kMBDiagMarker, self, self.presentingViewController, (unsigned long)self.tableView.visibleCells.count, NSStringFromCGRect(self.tableView.tableFooterView.frame), self.tableView.superview);
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        NSLog(@"[%@]   cell %@ contentConfiguration=%@ subviews=%lu", kMBDiagMarker, cell.reuseIdentifier, NSStringFromClass([cell.contentConfiguration class]), (unsigned long)cell.contentView.subviews.count);
+    }
 }
 
 - (void)didReceiveMemoryWarning
@@ -246,59 +290,90 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    static NSString *CellIdentifier = @"Cell";
+    //+20261118 Redesign: same three rows and the same data as before (verse title, description field, group),
+    // presented as cards. One reuse identifier per row type, because only the description row has a field.
+    NSString *CellIdentifier = (indexPath.section == 1) ? @"DescriptionCell" : ((indexPath.section == 0) ? @"VerseCell" : @"GroupCell");
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     
     // Configure the cell...
     if(cell == nil){
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
         
-        if (isdark ){
-            //+20261118 Night mode: iOS's dark grouped row surface (near-black grey, resolved through this screen's
-            // dark override) instead of darkGrayColor (#555), which made flat mid-grey bars on the black sheet and
-            // left the description placeholder with almost no contrast.
-            cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
-        }
+        // Card surface: white in Light, raised dark grey (#1C1C1E) in Night through this screen's override.
+        cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
         
         if(indexPath.section == 1){
             UITextField *tfiled = [[UITextField alloc] initWithFrame:CGRectZero];
             tfiled.delegate = self;
             tfiled.tag = 1+indexPath.section;
+            tfiled.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+            tfiled.adjustsFontForContentSizeCategory = YES;
+            tfiled.textColor = [UIColor labelColor];
+            tfiled.tintColor = [UIColor defaultWindowColor];                 // cursor in the theme colour
+            tfiled.clearButtonMode = UITextFieldViewModeWhileEditing;
+            tfiled.returnKeyType = UIReturnKeyDone;
             [[cell contentView] addSubview:tfiled];
-            //+20261118 Layout: the field had a fixed frame taken from the 320 pt default cell width, so on the iPad
-            // sheet it stopped part-way across the row, and it started at a different indent from the verse and
-            // group rows. Pin it to the row's margins so it lines up with them and fills the row at any width.
+            // Pinned to the card's margins so it fills the card on any width and lines up with the other rows.
             tfiled.translatesAutoresizingMaskIntoConstraints = NO;
             UILayoutGuide *margins = cell.contentView.layoutMarginsGuide;
+            NSLayoutConstraint *minHeight = [tfiled.heightAnchor constraintGreaterThanOrEqualToConstant:52.0];
             [NSLayoutConstraint activateConstraints:@[
                 [tfiled.leadingAnchor constraintEqualToAnchor:margins.leadingAnchor],
                 [tfiled.trailingAnchor constraintEqualToAnchor:margins.trailingAnchor],
                 [tfiled.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor],
-                [tfiled.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor]
+                [tfiled.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor],
+                minHeight
             ]];
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
         }
-    }
-    
-    if (isdark ){
-        //+20261118 Night mode: stay readable when the row is highlighted (black text on the dark highlight before).
-        cell.textLabel.highlightedTextColor = [UIColor labelColor];
-        cell.textLabel.textColor = [UIColor labelColor];
-                
     }
     
     if(indexPath.section == 2){
         Folders *foldrs = self.defaultFolder;//[self.arrayBookmarkDetails objectAtIndex:indexPath.section];
-        cell.textLabel.text = foldrs.folder_label;
+        UIListContentConfiguration *content = [UIListContentConfiguration cellConfiguration];
+        content.text = foldrs.folder_label;
+        content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+        content.textProperties.adjustsFontForContentSizeCategory = YES;
+        content.textProperties.color = [UIColor labelColor];
+        content.image = [self mb_iconTileForSymbol:@"folder.fill"];
+        content.imageProperties.reservedLayoutSize = CGSizeMake(29.0, 29.0);
+        content.imageToTextPadding = 14.0;
+        NSDirectionalEdgeInsets margins = content.directionalLayoutMargins;
+        margins.top = 11.5;
+        margins.bottom = 11.5;
+        content.directionalLayoutMargins = margins;
+        cell.contentConfiguration = content;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         
     }else if(indexPath.section == 0){
         
-        
-        
-        
-        cell.textLabel.text = self.bookMark.versetitle;
+        // Verse card: the reference as the heading and the verse itself below it, wrapped, so the user sees
+        // what is being bookmarked (before, the verse only appeared as a cut-off placeholder).
+        UIListContentConfiguration *content = [UIListContentConfiguration subtitleCellConfiguration];
+        content.text = self.bookMark.versetitle;
+        content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+        content.textProperties.adjustsFontForContentSizeCategory = YES;
+        content.textProperties.color = [UIColor labelColor];
+        content.textProperties.numberOfLines = 0;
+        if (self.verseText.length > 0) {
+            content.secondaryText = self.verseText;
+            content.secondaryTextProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+            content.secondaryTextProperties.adjustsFontForContentSizeCategory = YES;
+            content.secondaryTextProperties.color = [UIColor secondaryLabelColor];
+            content.secondaryTextProperties.numberOfLines = 4;
+            content.secondaryTextProperties.lineBreakMode = NSLineBreakByTruncatingTail;
+            content.textToSecondaryTextVerticalPadding = 6.0;
+        }
+        content.image = [self mb_iconTileForSymbol:@"book.closed.fill"];
+        content.imageProperties.reservedLayoutSize = CGSizeMake(29.0, 29.0);
+        content.imageToTextPadding = 14.0;
+        NSDirectionalEdgeInsets margins = content.directionalLayoutMargins;
+        margins.top = 14.0;
+        margins.bottom = 14.0;
+        content.directionalLayoutMargins = margins;
+        cell.contentConfiguration = content;
         cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
     }else{
         
         UITextField *field = (UITextField *)[[cell contentView] viewWithTag:1+indexPath.section];
@@ -387,6 +462,12 @@
 	self.activeTextField = textField;
     return YES;
 }
+//+20261118 Redesign: the keyboard's Done key closes the keyboard; the text is stored in
+// textFieldDidEndEditing: exactly as when the field loses focus any other way.
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
 - (void)textFieldDidEndEditing:(UITextField *)textField{
     
    // NSInteger section = textField.tag;
@@ -410,6 +491,84 @@
     self.defaultFolder = folder;
     [self.tableView reloadData];
     [self.navigationController popViewControllerAnimated:YES];
+}
+
+#pragma mark - Appearance (+20261118 Add Bookmark redesign)
+//
+// Visual only. The accent everywhere is the app's existing theme colour, [UIColor defaultWindowColor]
+// (themecolor from the 9-colour palette, default blue), the same colour as the navigation buttons. No colour
+// values, preference keys or stored data change.
+
+- (BOOL) mb_isLightColor:(UIColor *)color{
+
+    CGFloat r = 0, g = 0, b = 0, a = 0;
+    if (![color getRed:&r green:&g blue:&b alpha:&a]) {
+        CGFloat w = 0;
+        if (![color getWhite:&w alpha:&a]) return NO;
+        r = g = b = w;
+    }
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 0.7;
+}
+
+// A 29 pt rounded tile in the theme colour with a white symbol (black on very light theme colours such as
+// Night mode yellow or cyan), the same style as the Settings screen's row icons.
+- (UIImage *) mb_iconTileForSymbol:(NSString *)symbolName{
+
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
+    UIImage *symbol = [UIImage systemImageNamed:symbolName withConfiguration:config];
+    if (symbol == nil) return nil;
+    UIColor *accent = [UIColor defaultWindowColor];
+    UIColor *glyphColor = [self mb_isLightColor:accent] ? [UIColor blackColor] : [UIColor whiteColor];
+    UIImage *glyph = [symbol imageWithTintColor:glyphColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+
+    CGSize tileSize = CGSizeMake(29.0, 29.0);
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:tileSize];
+    UIImage *tile = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        [accent setFill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, tileSize.width, tileSize.height) cornerRadius:7.0] fill];
+        CGSize glyphSize = glyph.size;
+        [glyph drawInRect:CGRectMake((tileSize.width - glyphSize.width) / 2.0, (tileSize.height - glyphSize.height) / 2.0, glyphSize.width, glyphSize.height)];
+    }];
+    return [tile imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+// Full-width rounded button in the theme colour below the cards. It calls the existing saveClicked:, so saving,
+// the stored values and dismissal are exactly the same as with the Save button in the navigation bar.
+- (void) mb_installAddBookmarkButton{
+
+    UIColor *accent = [UIColor defaultWindowColor];
+    UIColor *foreground = [self mb_isLightColor:accent] ? [UIColor blackColor] : [UIColor whiteColor];
+
+    UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+    config.title = NSLocalizedString(@"add.bookmark", @"");
+    config.image = [UIImage systemImageNamed:@"bookmark.fill"];
+    config.imagePadding = 8.0;
+    config.baseBackgroundColor = accent;
+    config.baseForegroundColor = foreground;
+    config.cornerStyle = UIButtonConfigurationCornerStyleLarge;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 20.0, 14.0, 20.0);
+    config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(NSDictionary<NSAttributedStringKey, id> *incoming) {
+        NSMutableDictionary *outgoing = [incoming mutableCopy];
+        outgoing[NSFontAttributeName] = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+        return outgoing;
+    };
+
+    UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    [button addTarget:self action:@selector(saveClicked:) forControlEvents:UIControlEventTouchUpInside];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+
+    // Footer with the table's own margins, so the button lines up with the cards on iPhone and iPad.
+    UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 100.0)];
+    footer.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    footer.preservesSuperviewLayoutMargins = YES;
+    [footer addSubview:button];
+    [NSLayoutConstraint activateConstraints:@[
+        [button.leadingAnchor constraintEqualToAnchor:footer.layoutMarginsGuide.leadingAnchor],
+        [button.trailingAnchor constraintEqualToAnchor:footer.layoutMarginsGuide.trailingAnchor],
+        [button.topAnchor constraintEqualToAnchor:footer.topAnchor constant:24.0],
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:50.0]
+    ]];
+    self.tableView.tableFooterView = footer;
 }
 
 @end

@@ -7,6 +7,7 @@
 //
 
 #import "FolderSelectController.h"
+#import "MBConstants.h"
 #import "FolderDetailController.h"
 #import "BibleDao.h"
 #import "MalayalamBibleAppDelegate.h"
@@ -47,6 +48,25 @@
     [super viewDidLoad];
 
     [self.tableView setAllowsSelectionDuringEditing:YES];
+
+    //+20261118 Night mode: this group picker had no Night mode handling and always drew in Light. With the
+    // override below iOS's own dark grouped colours apply (black list, dark grey rows, light text), matching the
+    // Add Bookmark screen it is opened from.
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    if (isdark) {
+        // iOS 15+ draws bars from UIBarAppearance; barTintColor alone leaves the bar transparent at the top of the
+        // list. Set on this screen's navigationItem only, so other screens keep their own bar styling.
+        UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+        [barAppearance configureWithOpaqueBackground];
+        barAppearance.backgroundColor = [UIColor blackColor];
+        UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+        scrollEdgeAppearance.shadowColor = [UIColor clearColor];
+        self.navigationItem.standardAppearance = barAppearance;
+        self.navigationItem.compactAppearance = barAppearance;
+        self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+        self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
+    }
     // Uncomment the following line to preserve selection between presentations.
     // self.clearsSelectionOnViewWillAppear = NO;
  

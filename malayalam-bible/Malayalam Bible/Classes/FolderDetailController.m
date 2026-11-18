@@ -55,7 +55,7 @@
         self.tableView.backgroundColor = [UIColor blackColor];
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
         
-        self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
+        self.tableView.separatorColor = [UIColor separatorColor]; //+20261118 Night mode: system separator, not bright 30% white
         /*if([UIDeviceHardware isOS7Device]){
             NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
                                                    [UIColor whiteColor],UITextAttributeTextColor,
@@ -70,7 +70,23 @@
     }
     self.view.backgroundColor = changedcolor;
     
-    
+    //+20261118 Night mode: follow the app's own Night mode (kNightTime) rather than the iOS appearance, so the
+    // system colours this screen does not set itself (section headers, edit and delete controls, swipe actions,
+    // text and keyboard) match it. Same convention as the Add Bookmark and Settings screens.
+    self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    if (isdark) {
+        // iOS 15+ draws bars from UIBarAppearance; barTintColor alone leaves the bar transparent at the top of the
+        // list. Set on this screen's navigationItem only, so other screens keep their own bar styling.
+        UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+        [barAppearance configureWithOpaqueBackground];
+        barAppearance.backgroundColor = [UIColor blackColor];
+        UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+        scrollEdgeAppearance.shadowColor = [UIColor clearColor];
+        self.navigationItem.standardAppearance = barAppearance;
+        self.navigationItem.compactAppearance = barAppearance;
+        self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+        self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
+    }
     
     BOOL isos7 = NO;
     self.navigationController.navigationBar.translucent = NO;
@@ -227,17 +243,25 @@
         
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
         if (isdark ){
-            cell.backgroundColor = [UIColor darkGrayColor];
+            cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor]; //+20261118 Night mode: dark row surface, not #555
         }
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         
         if(indexPath.section == 0){
-            CGRect cellRect = [[cell contentView] frame];
-            
-            UITextField *tfiled = [[UITextField alloc] initWithFrame:CGRectMake(10, 10, cellRect.size.width-10, cellRect.size.height-10)];
+            UITextField *tfiled = [[UITextField alloc] initWithFrame:CGRectZero];
             tfiled.delegate = self;
             tfiled.tag = 1+indexPath.section;
             [[cell contentView] addSubview:tfiled];
+            //+20261118 Layout: pin the name field to the row's margins (it had a fixed 320 pt-based frame, so on
+            // iPad it stopped part-way across and was indented differently from other rows). Same as Add Bookmark.
+            tfiled.translatesAutoresizingMaskIntoConstraints = NO;
+            UILayoutGuide *margins = cell.contentView.layoutMarginsGuide;
+            [NSLayoutConstraint activateConstraints:@[
+                [tfiled.leadingAnchor constraintEqualToAnchor:margins.leadingAnchor],
+                [tfiled.trailingAnchor constraintEqualToAnchor:margins.trailingAnchor],
+                [tfiled.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor],
+                [tfiled.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor]
+            ]];
 
         }
                 
@@ -245,7 +269,7 @@
     
     if (isdark ){
         //cell.textLabel.highlightedTextColor = [UIColor blackColor];
-        cell.textLabel.textColor = [UIColor whiteColor];
+        cell.textLabel.textColor = [UIColor labelColor]; //+20261118 Night mode
         
     }
     
