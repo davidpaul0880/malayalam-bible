@@ -56,7 +56,7 @@
         self.tableView.backgroundColor = [UIColor blackColor];
         self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
         
-        self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
+        self.tableView.separatorColor = [UIColor separatorColor]; //+20261118 Night mode: system separator, not bright 30% white
         
         /*if([UIDeviceHardware isOS7Device]){
             
@@ -73,6 +73,23 @@
     }
     self.view.backgroundColor = changedcolor;
     
+    //+20261118 Night mode: follow the app's own Night mode (kNightTime) rather than the iOS appearance, so the
+    // system colours this screen does not set itself (section headers, edit and delete controls, swipe actions,
+    // text and keyboard) match it. Same convention as the Add Bookmark and Settings screens.
+    self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    if (isdark) {
+        // iOS 15+ draws bars from UIBarAppearance; barTintColor alone leaves the bar transparent at the top of the
+        // list. Set on this screen's navigationItem only, so other screens keep their own bar styling.
+        UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+        [barAppearance configureWithOpaqueBackground];
+        barAppearance.backgroundColor = [UIColor blackColor];
+        UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+        scrollEdgeAppearance.shadowColor = [UIColor clearColor];
+        self.navigationItem.standardAppearance = barAppearance;
+        self.navigationItem.compactAppearance = barAppearance;
+        self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+        self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
+    }
     
     if([UIDeviceHardware isOS7Device]){
         self.navigationController.navigationBar.barTintColor = changedcolor;
@@ -154,7 +171,7 @@
         lbl.backgroundColor = [UIColor clearColor];
         bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
         if (isdark ){
-            lbl.textColor = [UIColor whiteColor];
+            lbl.textColor = [UIColor secondaryLabelColor]; //+20261118 Night mode: empty-state text, secondary like iOS
         }
 
         lbl.numberOfLines = 0;
@@ -196,17 +213,18 @@
         
         bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
         if (isdark ){
-            cell.backgroundColor = [UIColor darkGrayColor];
+            cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor]; //+20261118 Night mode: dark row surface, not #555
         }
     }
     
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if (isdark ){
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
-        cell.textLabel.textColor = [UIColor whiteColor];
+        //+20261118 Night mode: primary and secondary text that stay readable on a highlighted row
+        cell.textLabel.highlightedTextColor = [UIColor labelColor];
+        cell.textLabel.textColor = [UIColor labelColor];
         
-        cell.detailTextLabel.highlightedTextColor = [UIColor blackColor];
-        cell.detailTextLabel.textColor = [UIColor whiteColor];
+        cell.detailTextLabel.highlightedTextColor = [UIColor secondaryLabelColor];
+        cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
 
     }
 

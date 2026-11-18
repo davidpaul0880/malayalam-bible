@@ -35,7 +35,9 @@
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if([UIDeviceHardware isOS7Device]){
         
-        self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
+        //+20261118 Night mode: this always set the shared bar white, which also left the Notes list's bar white
+        // after editing a note in Night mode. Light mode is unchanged.
+        self.navigationController.navigationBar.barTintColor = isdark ? [UIColor blackColor] : [UIColor whiteColor];
         
         //noneed[self setEdgesForExtendedLayout:UIRectEdgeNone];
     }else{
@@ -48,6 +50,25 @@
         }
     }
     
+    //+20261118 Night mode: the note editor had no Night mode handling; the text area, its text and the keyboard
+    // followed the iOS appearance instead. The override makes them follow the app's Night mode (kNightTime),
+    // the same convention as the Add Bookmark and Settings screens.
+    self.view.backgroundColor = [UIColor systemBackgroundColor];
+    self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    if (isdark) {
+        // iOS 15+ draws bars from UIBarAppearance; barTintColor alone leaves the bar transparent at the top of the
+        // list. Set on this screen's navigationItem only, so other screens keep their own bar styling.
+        UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+        [barAppearance configureWithOpaqueBackground];
+        barAppearance.backgroundColor = [UIColor blackColor];
+        UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+        scrollEdgeAppearance.shadowColor = [UIColor clearColor];
+        self.navigationItem.standardAppearance = barAppearance;
+        self.navigationItem.compactAppearance = barAppearance;
+        self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+        self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
+    }
+
     self.textArea = [[UITextView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
 
 	self.textArea.autoresizingMask =	UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight|
