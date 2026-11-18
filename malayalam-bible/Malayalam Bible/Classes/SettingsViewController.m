@@ -33,6 +33,11 @@
 
 @property(nonatomic) UISwitch *switchCustomKB;
 @property(nonatomic) BOOL isThemeChanged;
+@property(nonatomic, strong) NSMutableDictionary *iconCache;//+20261118 Settings redesign
+
+- (void) mb_applySettingsAppearanceDark:(BOOL)isDark;
+- (void) mb_configureRowCell:(UITableViewCell *)cell label:(NSString *)label value:(NSString *)value sectionIndex:(NSInteger)sectionIndex row:(NSInteger)row;
+- (UIColor *) mb_accentColor;
 @end
 
 
@@ -41,7 +46,7 @@
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
-    self = [super initWithStyle:UITableViewStyleGrouped];
+    self = [super initWithStyle:UITableViewStyleInsetGrouped];//+20261118 Settings redesign: rounded cards (was Grouped)
     if (self) {
         
         NSMutableDictionary *dictPref = [[NSUserDefaults standardUserDefaults] objectForKey:kStorePreference];
@@ -75,6 +80,7 @@
     CGRect r = self.navigationController.navigationBar.frame;
     UILabel *lblTitle = [[UILabel alloc] initWithFrame:CGRectMake(60, 0, r.size.width - 120, r.size.height)];
     lblTitle.text = @"Settings";
+    lblTitle.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];//+20261118
     lblTitle.textAlignment = NSTextAlignmentCenter;
     lblTitle.backgroundColor = [UIColor clearColor];
     if (isdark || ![UIDeviceHardware isOS7Device]) {
@@ -110,19 +116,17 @@
         
     }
     self.switchNightMode = [[UISwitch alloc] init];
+    [self.switchNightMode addTarget:self action:@selector(mb_switchNightModeDidChange:) forControlEvents:UIControlEventValueChanged];//+20261118 live preview
     self.switchAutoLock = [[UISwitch alloc] init];
     
     self.switchScroll = [[UISwitch alloc] init];
     [self.switchScroll addTarget:self action:@selector(switchScrollDidChange:) forControlEvents:UIControlEventValueChanged];
     
-    if (isdark ){
-        self.tableView.backgroundColor = [UIColor blackColor];
-        self.tableView.backgroundView.backgroundColor = [UIColor blackColor];
-        //self.tableView.sectionIndexColor = [UIColor whiteColor];
-        //self.tableView.sectionIndexBackgroundColor = [UIColor clearColor];
-        self.tableView.separatorColor = [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.3f];
-        
-    }
+    //+20261118 Settings redesign: colours now come from mb_applySettingsAppearanceDark: (was black table,
+    // white 30% separators). iPad: cards sit in a centred readable-width column instead of full-width rows.
+    self.tableView.cellLayoutMarginsFollowReadableWidth = YES;
+    self.tableView.estimatedRowHeight = 52.0;
+    [self mb_applySettingsAppearanceDark:isdark];
 }
 
 - (void)viewDidUnload
@@ -404,6 +408,7 @@
         
        // [arraySettings addObject:dictRateMe];
     
+    [self mb_applySettingsAppearanceDark:[self.switchNightMode isOn]];//+20261118 follows the switch (saved value on entry)
     [self.tableView reloadData];
 }
 
@@ -534,6 +539,189 @@
     return YES;
 }
 
+#pragma mark - Appearance (+20261118 Settings redesign)
+//
+// Visual only: inset-grouped cards that follow the app's own Night mode (kNightTime), not the iOS appearance.
+// Light: soft grey background with white cards. Night: black background with raised #1C1C1E cards.
+// The user's existing theme colour (the same lookup as the Application Theme row) is the single accent for
+// row icons, switches and sliders. No preference key, stored value, section order or navigation changes.
+
+static const CGFloat kSettingsIconSide = 29.0;
+static const CGFloat kSettingsIconCornerRadius = 7.0;
+static const CGFloat kSettingsRowVerticalMargin = 11.5;     // 29 pt icon + margins = 52 pt minimum row height
+static const CGFloat kSettingsHeaderlessSpacing = 12.0;     // tighter gap above the headerless reading groups
+static const CGFloat kSettingsSectionFooterSpacing = 8.0;
+
+// Same lookup as the Application Theme row (themecolor, default 3), from the existing 9-colour palette.
+- (UIColor *) mb_accentColor{
+
+    NSArray *colors = [ColorViewController arrayColors];
+    NSInteger colorr = [[NSUserDefaults standardUserDefaults] integerForKey:@"themecolor"];
+    if(colorr < 1 || colorr > (NSInteger)colors.count){
+        colorr = 3;
+    }
+    return [colors objectAtIndex:colorr-1];
+}
+
+- (BOOL) mb_isLightColor:(UIColor *)color{
+
+    CGFloat r = 0, g = 0, b = 0, a = 0;
+    if (![color getRed:&r green:&g blue:&b alpha:&a]) {
+        CGFloat w = 0;
+        if (![color getWhite:&w alpha:&a]) return NO;
+        r = g = b = w;
+    }
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 0.7;
+}
+
+// Icon for each settings row, keyed by the existing sectionindex values.
+- (NSString *) mb_symbolNameForSectionIndex:(NSInteger)sectionIndex row:(NSInteger)row{
+
+    switch (sectionIndex) {
+        case 0: return (row == 0) ? @"book.closed" : @"books.vertical";          // Languages: Primary, Secondary
+        case 1: return @"questionmark.circle";                                    // Search help (pre-iOS 8 layout)
+        case 6:                                                                   // Malayalam Typing for Search
+            if (row == 0) return @"keyboard";
+            return self.switchCustomKB.isOn ? @"arrow.down.app" : @"questionmark.circle";
+        case 5: return @"moon.fill";                                              // Night Mode
+        case 9: return @"lock.open";                                              // Disable Auto-Lock
+        case 4: return @"arrow.down.doc";                                         // Auto Scroll
+        case 7: return @"paintpalette";                                           // Application Theme
+        case 3: return (row == 0) ? @"info.circle" : @"star";                     // AppInfo, Review
+        default: return nil;
+    }
+}
+
+// A small rounded accent tile with a white (or black, on very light accents) symbol, cached per symbol.
+- (UIImage *) mb_iconTileForSymbol:(NSString *)symbolName{
+
+    if (symbolName.length == 0) return nil;
+    if (self.iconCache == nil) {
+        self.iconCache = [NSMutableDictionary dictionary];
+    }
+    UIImage *cached = [self.iconCache objectForKey:symbolName];
+    if (cached) return cached;
+
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
+    UIImage *symbol = [UIImage systemImageNamed:symbolName withConfiguration:config];
+    if (symbol == nil) {
+        symbol = [UIImage systemImageNamed:@"gearshape" withConfiguration:config];
+    }
+    UIColor *accent = [self mb_accentColor];
+    UIColor *glyphColor = [self mb_isLightColor:accent] ? [UIColor blackColor] : [UIColor whiteColor];
+    UIImage *glyph = [symbol imageWithTintColor:glyphColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+
+    CGSize tileSize = CGSizeMake(kSettingsIconSide, kSettingsIconSide);
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:tileSize];
+    UIImage *tile = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        [accent setFill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, tileSize.width, tileSize.height) cornerRadius:kSettingsIconCornerRadius] fill];
+        CGSize glyphSize = glyph.size;
+        [glyph drawInRect:CGRectMake((tileSize.width - glyphSize.width) / 2.0, (tileSize.height - glyphSize.height) / 2.0, glyphSize.width, glyphSize.height)];
+    }];
+    tile = [tile imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    [self.iconCache setObject:tile forKey:symbolName];
+    return tile;
+}
+
+// Standard settings row: accent icon tile, wrapping label (long Malayalam text never clips), value in the
+// secondary colour beside it (or below it when there is no room), Dynamic Type, 52 pt minimum height.
+- (void) mb_configureRowCell:(UITableViewCell *)cell label:(NSString *)label value:(NSString *)value sectionIndex:(NSInteger)sectionIndex row:(NSInteger)row{
+
+    BOOL hasValue = ([value isKindOfClass:[NSString class]] && value.length > 0);
+    UIListContentConfiguration *content = hasValue ? [UIListContentConfiguration valueCellConfiguration] : [UIListContentConfiguration cellConfiguration];
+
+    content.text = label;
+    content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    content.textProperties.adjustsFontForContentSizeCategory = YES;
+    content.textProperties.color = [UIColor labelColor];
+    content.textProperties.numberOfLines = 0;
+    content.textProperties.lineBreakMode = NSLineBreakByWordWrapping;
+
+    if (hasValue) {
+        content.secondaryText = value;
+        content.secondaryTextProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+        content.secondaryTextProperties.adjustsFontForContentSizeCategory = YES;
+        content.secondaryTextProperties.color = [UIColor secondaryLabelColor];
+        content.secondaryTextProperties.numberOfLines = 0;
+    }
+
+    content.image = [self mb_iconTileForSymbol:[self mb_symbolNameForSectionIndex:sectionIndex row:row]];
+    content.imageProperties.reservedLayoutSize = CGSizeMake(kSettingsIconSide, kSettingsIconSide);
+    content.imageProperties.maximumSize = CGSizeMake(kSettingsIconSide, kSettingsIconSide);
+    content.imageToTextPadding = 14.0;
+
+    NSDirectionalEdgeInsets margins = content.directionalLayoutMargins;
+    margins.top = kSettingsRowVerticalMargin;
+    margins.bottom = kSettingsRowVerticalMargin;
+    content.directionalLayoutMargins = margins;
+
+    cell.contentConfiguration = content;
+}
+
+// Applies the Light or Night look to this screen only (its view, title and its own navigation bar appearance).
+// Called on load, on every appearance (with the switch's current state) and, for the live preview, when the
+// Night Mode switch is flipped. It never writes kNightTime: saving still happens in viewWillDisappear:.
+- (void) mb_applySettingsAppearanceDark:(BOOL)isDark{
+
+    self.overrideUserInterfaceStyle = isDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    [self.iconCache removeAllObjects];   // the accent may have changed (theme picker)
+
+    self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.tableView.separatorColor = [UIColor separatorColor];
+
+    UIColor *accent = [self mb_accentColor];
+    for (UISwitch *aSwitch in @[self.switchNightMode ?: [NSNull null], self.switchAutoLock ?: [NSNull null], self.switchScroll ?: [NSNull null], self.switchCustomKB ?: [NSNull null]]) {
+        if ([aSwitch isKindOfClass:[UISwitch class]]) {
+            aSwitch.onTintColor = accent;
+        }
+    }
+
+    if ([self.navigationItem.titleView isKindOfClass:[UILabel class]]) {
+        ((UILabel *)self.navigationItem.titleView).textColor = isDark ? [UIColor whiteColor] : [UIColor blackColor];
+    }
+
+    // Opaque bar in the screen's background colour: black at night (as on the reading screen), soft grey by day.
+    UITraitCollection *traits = [UITraitCollection traitCollectionWithUserInterfaceStyle:(isDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight)];
+    UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+    [barAppearance configureWithOpaqueBackground];
+    barAppearance.backgroundColor = [[UIColor systemGroupedBackgroundColor] resolvedColorWithTraitCollection:traits];
+    barAppearance.shadowColor = isDark ? [UIColor colorWithWhite:0.25 alpha:1.0] : [[UIColor separatorColor] resolvedColorWithTraitCollection:traits];
+    UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+    scrollEdgeAppearance.shadowColor = [UIColor clearColor];
+    self.navigationItem.standardAppearance = barAppearance;
+    self.navigationItem.compactAppearance = barAppearance;
+    self.navigationItem.scrollEdgeAppearance = scrollEdgeAppearance;
+    self.navigationItem.compactScrollEdgeAppearance = scrollEdgeAppearance;
+
+    // Same status bar styles the reading screen uses for each mode.
+    [[UIApplication sharedApplication] setStatusBarStyle:(isDark ? UIStatusBarStyleLightContent : UIStatusBarStyleDefault) animated:YES];
+}
+
+// Live preview: restyles only this screen. The choice is still saved when leaving Settings, as before.
+- (void) mb_switchNightModeDidChange:(UISwitch *)sender{
+
+    UIView *transitionView = self.navigationController.view ?: self.view;
+    [UIView transitionWithView:transitionView duration:0.25 options:UIViewAnimationOptionTransitionCrossDissolve|UIViewAnimationOptionAllowUserInteraction animations:^{
+        [self mb_applySettingsAppearanceDark:sender.isOn];
+    } completion:nil];
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
+
+    NSDictionary *dict = [arraySettings objectAtIndex:section];
+    NSString *header = [dict valueForKey:@"header"];
+    if (![header isKindOfClass:[NSString class]] || header.length == 0) {
+        return kSettingsHeaderlessSpacing;   // Night Mode, Auto-Lock and Auto Scroll read as one group
+    }
+    return UITableViewAutomaticDimension;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
+
+    return kSettingsSectionFooterSpacing;
+}
+
 #pragma mark - Table view data source
 
 
@@ -580,7 +768,7 @@
         return 72;
         
     }
-    return 44;
+    return UITableViewAutomaticDimension;//+20261118 self-sizing rows (52 pt minimum, wrapping labels); was 44
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -677,10 +865,7 @@
             cell.backgroundColor = [UIColor blackColor];
         }*/
         
-        bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
-        if (isdark ){
-            cell.backgroundColor = [UIColor darkGrayColor];
-        }
+        //+20261118 Settings redesign: card colour comes from the system grouped colours (was darkGrayColor at night)
         
     }
     
@@ -741,13 +926,13 @@
     }
    
     
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    //+20261118 Settings redesign: text and card colours follow the screen's Light/Night style (was dark grey
+    // cells with white text at night). Slider rows: accent track and label-colour sample text.
+    if(indexconst == FontSizeRow || (indexconst == 4 && indexPath.row == 1)){
         
-
-    if (isdark ){
-        cell.backgroundColor = [UIColor darkGrayColor];
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
-        cell.textLabel.textColor = [UIColor whiteColor];
+        FontSizeCell *sliderCell = (FontSizeCell *)cell;
+        sliderCell.lblSample.textColor = [UIColor labelColor];
+        sliderCell.fontSizeSlider.minimumTrackTintColor = [self mb_accentColor];
     }
     
     if( !( (indexconst == 4 && indexPath.row == 1) || indexconst == FontSizeRow) ){
@@ -757,8 +942,8 @@
         
         if(dictData){
             
-            cell.textLabel.text = [dictData valueForKey:@"label"];
-            cell.detailTextLabel.text = [dictData valueForKey:@"value"];
+            //+20261118 Settings redesign: icon, wrapping label and value (was textLabel/detailTextLabel)
+            [self mb_configureRowCell:cell label:[dictData valueForKey:@"label"] value:[dictData valueForKey:@"value"] sectionIndex:indexconst row:indexPath.row];
         }
     }
     if (indexconst == 7){
@@ -771,6 +956,14 @@
         }
         
         [(UIButton *)cell.accessoryView setBackgroundColor:[[ColorViewController arrayColors] objectAtIndex:colorr-1]];
+
+        //+20261118 Settings redesign: round swatch
+        UIButton *swatch = (UIButton *)cell.accessoryView;
+        swatch.frame = CGRectMake(0, 0, 22, 22);
+        swatch.layer.cornerRadius = 11.0;
+        swatch.clipsToBounds = YES;
+        swatch.userInteractionEnabled = NO;   // the row itself opens the colour picker
+        swatch.isAccessibilityElement = NO;
     }
     
     return cell;
@@ -1055,6 +1248,7 @@
         
         self.isThemeChanged = YES;
         
+        [self.iconCache removeAllObjects];//+20261118 icons use the new theme colour
         [self.tableView reloadData];
 
     }
