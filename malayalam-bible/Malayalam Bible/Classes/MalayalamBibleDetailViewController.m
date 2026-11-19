@@ -125,6 +125,10 @@ __VA_ARGS__ \
 @property (strong, nonatomic) NSArray<UIButton *> *selectionMenuSwatches;
 @property (strong, nonatomic) UIButton *selectionMenuShareButton;
 @property (strong, nonatomic) UIButton *selectionMenuOffButton;
+@property (strong, nonatomic) UIView *selectionActionHost;               //+20261118 Share | Add Bookmark card
+@property (strong, nonatomic) UIVisualEffectView *selectionActionGlass;  //+20261118
+@property (strong, nonatomic) UIView *selectionActionDivider;            //+20261118
+@property (strong, nonatomic) UIView *selectionColourHost;               //+20261118 colours + off card
 @property (strong, nonatomic) UIView *selectionCountContainer;
 @property (strong, nonatomic) UIVisualEffectView *selectionCountGlass;
 @property (strong, nonatomic) UILabel *selectionCountLabel;
@@ -2013,18 +2017,23 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
 // Share presents the native Share Sheet with exactly the Copy text.
 // Every way a selection ends (deselecting the last verse, an action, closing the Share Sheet, tapping
 // outside the verses, a new chapter, leaving the screen) hides the menu and restores the floating toolbar
-// and the Search circle. Every action keeps a 44 pt touch target: on screens too narrow for one row of
-// eight actions the menu uses two rows (colours above; Bookmark, Share, off below).
+// and the Search circle. Every action keeps a 44 pt touch target.
+//+20261118 Layout: the menu container now holds two glass cards. Top: Share and Add Bookmark side by side
+// (icon + label, equal halves). Bottom, in the floating toolbar's slot: the five colours and off. Only the
+// arrangement inside the container changed; showing, hiding, the outside tap, the content inset and every
+// action still go through the same container and methods as before (no new timer or visibility logic).
 
 static const CGFloat kSelectionTarget = 44.0;          // minimum touch target of every menu action
 static const CGFloat kSelectionPadding = 6.0;          // inner padding of the menu capsule
-static const CGFloat kSelectionRowGap = 4.0;           // gap between the two rows on narrow screens
 static const CGFloat kSelectionScreenMargin = 8.0;     // minimum distance from the screen edges
 static const CGFloat kSelectionCornerRadius = 28.0;
 static const CGFloat kSelectionSwatchDiameter = 26.0;
 static const CGFloat kSelectionCountHeight = 26.0;
 static const CGFloat kSelectionCountGap = 6.0;         // between the count label and the menu
 static const NSInteger kTagSelectionSwatchDot = 7311;
+static const CGFloat kSelectionActionHeight = 50.0;    //+20261118 Share | Add Bookmark card
+static const CGFloat kSelectionCardGap = 8.0;          //+20261118 between the two cards
+static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 
 #pragma mark Selection helpers
 
@@ -2099,25 +2108,53 @@ static const NSInteger kTagSelectionSwatchDot = 7311;
 
     if (self.selectionMenuContainer != nil || self.bottomToolBar.superview != self.view) return;
 
-    UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
-
-    // Menu: a non-clipping host carries the shadow, the glass inside it clips to the capsule.
+    // Menu: a transparent container (shown, hidden, laid out and hit-tested exactly as before) holding two
+    // cards. Each card is a non-clipping host that carries the shadow, with the glass inside clipping to it.
     UIView *menu = [[UIView alloc] initWithFrame:CGRectZero];
     menu.backgroundColor = [UIColor clearColor];
     menu.hidden = YES;
     menu.alpha = 0.0;
 
+    UIView *actionHost = [[UIView alloc] initWithFrame:CGRectZero];   //+20261118 Share | Add Bookmark
+    actionHost.backgroundColor = [UIColor clearColor];
+    [menu addSubview:actionHost];
+    UIVisualEffectView *actionGlass = [[UIVisualEffectView alloc] initWithEffect:nil];
+    actionGlass.frame = actionHost.bounds;
+    [actionHost addSubview:actionGlass];
+
+    UIView *colourHost = [[UIView alloc] initWithFrame:CGRectZero];   //+20261118 colours + off
+    colourHost.backgroundColor = [UIColor clearColor];
+    [menu addSubview:colourHost];
     UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:nil];
-    glass.frame = menu.bounds;
-    [menu addSubview:glass];
+    glass.frame = colourHost.bounds;
+    [colourHost addSubview:glass];
 
+    // Share and Add Bookmark: same actions and tags as before, now with a label beside the icon.
+    UIImageSymbolConfiguration *actionSymbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
     UIButton *bookmarkButton = [self mb_selectionMenuButtonWithTag:kActionBookmark];
-    [bookmarkButton setImage:[UIImage systemImageNamed:@"bookmark" withConfiguration:symbolConfig] forState:UIControlStateNormal];
-    bookmarkButton.accessibilityLabel = NSLocalizedString(@"action.bookmark", @"");
-
     UIButton *shareButton = [self mb_selectionMenuButtonWithTag:kActionShare];
-    [shareButton setImage:[UIImage systemImageNamed:@"square.and.arrow.up" withConfiguration:symbolConfig] forState:UIControlStateNormal];
-    shareButton.accessibilityLabel = NSLocalizedString(@"Share", @"");
+    NSArray *actionSpecs = @[@[shareButton, @"square.and.arrow.up", NSLocalizedString(@"Share", @"")],
+                             @[bookmarkButton, @"bookmark", NSLocalizedString(@"add.bookmark", @"")]];
+    for (NSArray *spec in actionSpecs) {
+        UIButton *button = spec[0];
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.image = [UIImage systemImageNamed:spec[1] withConfiguration:actionSymbolConfig];
+        config.imagePadding = 7.0;
+        config.title = spec[2];
+        config.titleLineBreakMode = NSLineBreakByTruncatingTail;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(NSDictionary<NSAttributedStringKey, id> *incoming) {
+            NSMutableDictionary *outgoing = [incoming mutableCopy];
+            outgoing[NSFontAttributeName] = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+            return outgoing;
+        };
+        config.contentInsets = NSDirectionalEdgeInsetsMake(0, 8, 0, 8);
+        button.configuration = config;
+        button.accessibilityLabel = spec[2];
+        [actionGlass.contentView addSubview:button];
+    }
+    UIView *divider = [[UIView alloc] initWithFrame:CGRectZero];   // hairline between Share and Add Bookmark
+    divider.userInteractionEnabled = NO;
+    [actionGlass.contentView addSubview:divider];
 
     NSMutableArray *swatches = [NSMutableArray arrayWithCapacity:5];
     for (NSInteger actionTag = kActionColor1; actionTag <= kActionColor5; actionTag++) {
@@ -2135,13 +2172,14 @@ static const NSInteger kTagSelectionSwatchDot = 7311;
     UIButton *offButton = [self mb_selectionMenuButtonWithTag:kActionClear];
     offButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
 
-    // Display order: Bookmark, Share, colour 1-5, off.
+    // All menu actions (for styling): Bookmark, Share, colour 1-5, off. The colour card holds colours 1-5 and off.
     NSMutableArray *buttons = [NSMutableArray arrayWithObjects:bookmarkButton, shareButton, nil];
     [buttons addObjectsFromArray:swatches];
     [buttons addObject:offButton];
-    for (UIButton *button in buttons) {
+    for (UIButton *button in swatches) {
         [glass.contentView addSubview:button];
     }
+    [glass.contentView addSubview:offButton];
 
     // Count label: a separate small glass label above the menu, so it never takes width from the actions.
     UIView *countHost = [[UIView alloc] initWithFrame:CGRectZero];
@@ -2166,6 +2204,10 @@ static const NSInteger kTagSelectionSwatchDot = 7311;
     self.selectionMenuSwatches = swatches;
     self.selectionMenuShareButton = shareButton;
     self.selectionMenuOffButton = offButton;
+    self.selectionActionHost = actionHost;
+    self.selectionActionGlass = actionGlass;
+    self.selectionActionDivider = divider;
+    self.selectionColourHost = colourHost;
     self.selectionCountContainer = countHost;
     self.selectionCountGlass = countGlass;
     self.selectionCountLabel = countLabel;
@@ -2195,12 +2237,16 @@ static const NSInteger kTagSelectionSwatchDot = 7311;
     UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
     UIColor *tint = self.bottomToolBar.tintColor ?: [UIColor defaultWindowColor];
 
-    for (UIView *host in @[self.selectionMenuContainer, self.selectionCountContainer]) {
+    self.selectionMenuContainer.overrideUserInterfaceStyle = style;
+    self.selectionMenuContainer.layer.shadowOpacity = 0.0f;   //+20261118 each card carries its own shadow
+    for (UIView *host in @[self.selectionActionHost, self.selectionColourHost, self.selectionCountContainer]) {
         host.overrideUserInterfaceStyle = style;
         [self mb_applyShadowToLayer:host.layer dark:isdark];
     }
+    [self mb_styleGlassView:self.selectionActionGlass dark:isdark interactive:NO];
     [self mb_styleGlassView:self.selectionMenuGlass dark:isdark interactive:NO];
     [self mb_styleGlassView:self.selectionCountGlass dark:isdark interactive:NO];
+    self.selectionActionDivider.backgroundColor = isdark ? [UIColor colorWithWhite:1.0 alpha:0.18] : [UIColor colorWithWhite:0.0 alpha:0.12];
 
     for (UIButton *button in self.selectionMenuButtons) {
         button.tintColor = tint;
@@ -2273,51 +2319,41 @@ static const NSInteger kTagSelectionSwatchDot = 7311;
     CGFloat maxX = bounds.size.width - safe.right - kSelectionScreenMargin;
     CGFloat maxWidth = MAX(0, maxX - minX);
 
-    NSArray *buttons = self.selectionMenuButtons;
-    NSUInteger buttonCount = buttons.count;   // 8
-    CGFloat oneRowWidth = buttonCount * kSelectionTarget + 2 * kSelectionPadding;
-    BOOL twoRows = oneRowWidth > maxWidth;
-
-    CGFloat width;
-    CGFloat height;
-    if (!twoRows) {
-        width = MIN(MAX(groupWidth, oneRowWidth), maxWidth);
-        height = kGlassBarHeight;
-    } else {
-        width = MIN(MAX(groupWidth, 5 * kSelectionTarget + 2 * kSelectionPadding), maxWidth);
-        height = 2 * kSelectionTarget + kSelectionRowGap + 2 * kSelectionPadding;
-    }
-    width = round(width);
-    height = round(height);
+    //+20261118 Two cards, same width, centred on the floating toolbar group: Share | Add Bookmark on top,
+    // the five colours and off below (in the toolbar's own slot, same bottom edge as before).
+    NSArray *colourButtons = [self.selectionMenuSwatches arrayByAddingObject:self.selectionMenuOffButton];
+    CGFloat colourRowWidth = colourButtons.count * kSelectionTarget + 2 * kSelectionPadding;   // 6 x 44 pt
+    CGFloat width = round(MIN(MAX(groupWidth, colourRowWidth), maxWidth));
+    CGFloat colourHeight = kGlassBarHeight;
+    CGFloat actionHeight = kSelectionActionHeight;
+    CGFloat height = actionHeight + kSelectionCardGap + colourHeight;
     CGFloat left = round(MIN(MAX(groupCenterX - width / 2.0, minX), MAX(minX, maxX - width)));
     CGFloat top = round(bottom - height);
 
     menu.bounds = CGRectMake(0, 0, width, height);
     menu.center = CGPointMake(left + width / 2.0, top + height / 2.0);
-    [self mb_updateSelectionGlass:self.selectionMenuGlass inHost:menu cornerRadius:MIN(kSelectionCornerRadius, height / 2.0)];
 
-    // Actions: equal cells, never narrower than 44 pt.
-    CGFloat innerWidth = width - 2 * kSelectionPadding;
-    if (!twoRows) {
-        CGFloat cell = innerWidth / buttonCount;
-        for (NSUInteger i = 0; i < buttonCount; i++) {
-            UIButton *button = buttons[i];
-            button.frame = CGRectMake(kSelectionPadding + i * cell, round((height - kSelectionTarget) / 2.0), cell, kSelectionTarget);
-        }
-    } else {
-        // Row 1: the five colours. Row 2: Bookmark, Share, off.
-        NSArray *swatches = self.selectionMenuSwatches;
-        NSArray *actions = @[buttons[0], buttons[1], self.selectionMenuOffButton];
-        CGFloat swatchCell = innerWidth / swatches.count;
-        for (NSUInteger i = 0; i < swatches.count; i++) {
-            UIButton *button = swatches[i];
-            button.frame = CGRectMake(kSelectionPadding + i * swatchCell, kSelectionPadding, swatchCell, kSelectionTarget);
-        }
-        CGFloat actionCell = innerWidth / actions.count;
-        for (NSUInteger i = 0; i < actions.count; i++) {
-            UIButton *button = actions[i];
-            button.frame = CGRectMake(kSelectionPadding + i * actionCell, kSelectionPadding + kSelectionTarget + kSelectionRowGap, actionCell, kSelectionTarget);
-        }
+    // Top card: Share and Add Bookmark, equal halves, 44 pt touch targets, hairline between them.
+    UIView *actionHost = self.selectionActionHost;
+    actionHost.frame = CGRectMake(0, 0, width, actionHeight);
+    [self mb_updateSelectionGlass:self.selectionActionGlass inHost:actionHost cornerRadius:MIN(kSelectionActionCornerRadius, actionHeight / 2.0)];
+    UIButton *shareButton = self.selectionMenuShareButton;
+    UIButton *bookmarkButton = self.selectionMenuButtons.firstObject;
+    CGFloat half = (width - 2 * kSelectionPadding) / 2.0;
+    CGFloat actionY = round((actionHeight - kSelectionTarget) / 2.0);
+    shareButton.frame = CGRectMake(kSelectionPadding, actionY, half, kSelectionTarget);
+    bookmarkButton.frame = CGRectMake(kSelectionPadding + half, actionY, half, kSelectionTarget);
+    CGFloat hairline = 1.0 / MAX(1.0, self.view.traitCollection.displayScale);
+    self.selectionActionDivider.frame = CGRectMake(round(kSelectionPadding + half), 12.0, hairline, actionHeight - 24.0);
+
+    // Bottom card: colours 1-5 and off, equal cells (44 pt on every supported width).
+    UIView *colourHost = self.selectionColourHost;
+    colourHost.frame = CGRectMake(0, actionHeight + kSelectionCardGap, width, colourHeight);
+    [self mb_updateSelectionGlass:self.selectionMenuGlass inHost:colourHost cornerRadius:MIN(kSelectionCornerRadius, colourHeight / 2.0)];
+    CGFloat cell = (width - 2 * kSelectionPadding) / colourButtons.count;
+    for (NSUInteger i = 0; i < colourButtons.count; i++) {
+        UIButton *button = colourButtons[i];
+        button.frame = CGRectMake(kSelectionPadding + i * cell, round((colourHeight - kSelectionTarget) / 2.0), cell, kSelectionTarget);
     }
     for (UIButton *swatch in self.selectionMenuSwatches) {
         UIView *dot = [swatch viewWithTag:kTagSelectionSwatchDot];
