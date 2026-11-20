@@ -35,6 +35,20 @@
 
 @end
 
+//+20261120 Search redesign: presentation-only state (no change to search logic or stored data).
+static const NSInteger kTagSearchLabelBorder = 9901;
+static const CGFloat kSearchMaxContentWidth = 720.0;   // iPad: centred, readable result column
+static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field never spans the whole bar
+
+@interface SearchViewController ()
+@property (nonatomic, copy) NSString *mbHighlightQuery;   // the text that was searched for, to highlight it
+@property (nonatomic, assign) BOOL mbHasSearched;         // a search finished for the current text
+@property (nonatomic, strong) UILabel *mbStateLabel;      // empty / no-results message
+- (void) mb_applySearchAppearance;
+- (void) mb_updateStateView;
+- (NSAttributedString *) mb_attributedVerse:(NSString *)verse font:(UIFont *)font;
+@end
+
 @implementation SearchViewController
 
 @synthesize  labelSearch, arrayResults, primaryL, isFirstTime, tableViewSearch, selectedBook, scopeValue, searchBarr;
@@ -166,6 +180,8 @@
             
             UIView *borderView = [[UIView alloc] initWithFrame:CGRectMake(0, self.labelSearch.frame.size.height-1, self.labelSearch.frame.size.width, 1)];
             borderView.backgroundColor = [UIColor lightGrayColor];
+            borderView.tag = kTagSearchLabelBorder;   //+20261120 recoloured in mb_applySearchAppearance
+            borderView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleTopMargin;
             [self.labelSearch addSubview:borderView];
             
         }else{
@@ -194,7 +210,12 @@
     
     //(@"yValue = %f", yValue);
     
-    self.tableViewSearch = [[UITableView alloc] initWithFrame:CGRectMake(0, yValue, self.view.frame.size.width, self.view.frame.size.height-yValue) style:UITableViewStylePlain];
+    //+20261120 Redesign: results as rounded cards grouped by book (was a plain full-width list).
+    self.tableViewSearch = [[UITableView alloc] initWithFrame:CGRectMake(0, yValue, self.view.frame.size.width, self.view.frame.size.height-yValue) style:UITableViewStyleInsetGrouped];
+    self.tableViewSearch.rowHeight = UITableViewAutomaticDimension;   // Malayalam verses size to their text (no clipping)
+    self.tableViewSearch.estimatedRowHeight = 88.0;
+    self.tableViewSearch.preservesSuperviewLayoutMargins = NO;
+    self.tableViewSearch.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.tableViewSearch.autoresizingMask = UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
     self.tableViewSearch.delegate = self;
     self.tableViewSearch.dataSource = self;
@@ -245,7 +266,7 @@
     if(![UIDeviceHardware isOS7Device]){
     [self performSelector:@selector(enableCancelButton:) withObject:self.searchBarr afterDelay:0.5];
     }
-  	self.activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    self.activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     
     
 	CGRect cgRect = self.tableViewSearch.frame;
@@ -260,6 +281,41 @@
     
     self.activityView.hidesWhenStopped = YES;
 
+    //+20261120 Empty / no-results message, shown behind the results.
+    UILabel *stateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    stateLabel.numberOfLines = 0;
+    stateLabel.textAlignment = NSTextAlignmentCenter;
+    stateLabel.adjustsFontForContentSizeCategory = YES;
+    self.mbStateLabel = stateLabel;
+    self.tableViewSearch.backgroundView = stateLabel;
+
+    [self mb_applySearchAppearance];
+}
+
+//+20261120 iPad: a centred, readable result column and a search field of comfortable width.
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    CGFloat width = self.view.bounds.size.width;
+    CGFloat side = 20.0;
+    if (self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular && width > kSearchMaxContentWidth + 2 * side) {
+        side = floor((width - kSearchMaxContentWidth) / 2.0);
+    } else if (width < 375.0) {
+        side = 16.0;
+    }
+    UIEdgeInsets margins = self.tableViewSearch.layoutMargins;
+    if (fabs(margins.left - side) > 0.5 || fabs(margins.right - side) > 0.5) {
+        self.tableViewSearch.layoutMargins = UIEdgeInsetsMake(margins.top, side, margins.bottom, side);
+    }
+    if ([UIDeviceHardware isOS7Device] && self.navigationItem.titleView == self.searchBarr) {
+        CGRect frame = self.searchBarr.frame;
+        CGFloat fieldWidth = MIN(width - 70, kSearchMaxFieldWidth);
+        if (fabs(frame.size.width - fieldWidth) > 0.5) {
+            frame.size.width = fieldWidth;
+            self.searchBarr.frame = frame;
+        }
+    }
+    self.mbStateLabel.preferredMaxLayoutWidth = MIN(width - 64.0, 420.0);
 }
 
 - (void)viewDidUnload
@@ -275,6 +331,9 @@
     if(![UIDeviceHardware isOS7Device]){
     self.navigationController.navigationBarHidden = YES;
     }
+    //+20261120 The reading screen reuses this controller, so viewDidLoad runs once: re-apply the look each time
+    // so a Night mode or theme change made since is picked up.
+    [self mb_applySearchAppearance];
     
     /*
 	 Hide the search bar
@@ -357,17 +416,9 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSDictionary *dictVerse = [[[arrayResults objectAtIndex:indexPath.section] objectForKey:@"rowValues"] objectAtIndex:indexPath.row];
-    
-    NSString *verseStr = [dictVerse valueForKey:@"verse_text"];
-    
-    UIFont *cellFont = [UIFont fontWithName:kFontName size:FONT_SIZE];
-        
-    CGSize constraintSize = CGSizeMake(self.tableViewSearch.frame.size.width-70, MAXFLOAT);//280
-    
-    CGSize labelSize = [verseStr sizeWithFont:cellFont constrainedToSize:constraintSize lineBreakMode:NSLineBreakByWordWrapping];
-    
-    return labelSize.height +10 ;
+    //+20261120 Self-sizing: the old fixed-width estimate no longer matched the inset cards and could clip
+    // Malayalam lines. The cell's label wraps to its real width.
+    return UITableViewAutomaticDimension;
     
 }
 - (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
@@ -579,26 +630,23 @@
         UIFont *cellFont = [UIFont fontWithName:kFontName size:FONT_SIZE];
         cell.textLabel.font = cellFont;
     }
-    bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
-    if (isdark ){
-        cell.backgroundColor = [UIColor blackColor];
-        cell.textLabel.textColor = [UIColor whiteColor];
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
-    }else{
-        cell.backgroundColor = [UIColor whiteColor];
-        cell.textLabel.textColor = [UIColor blackColor];
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
-    }
-    
+    //+20261120 Redesign: card rows with the app's own Night mode colours (via this screen's override), selected
+    // rows (for Copy) tinted with the theme colour, and the searched text highlighted.
+    cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
+    cell.textLabel.textColor = [UIColor labelColor];
+    cell.textLabel.highlightedTextColor = [UIColor labelColor];
+    cell.tintColor = [UIColor defaultWindowColor];   // detail (open verse) button
+    UIView *selectedBackground = [[UIView alloc] init];
+    selectedBackground.backgroundColor = [[UIColor defaultWindowColor] colorWithAlphaComponent:0.16];
+    cell.selectedBackgroundView = selectedBackground;
     cell.accessoryType = UITableViewCellAccessoryDetailDisclosureButton;
     NSDictionary *dictVerse = [[[arrayResults objectAtIndex:indexPath.section] objectForKey:@"rowValues"] objectAtIndex:indexPath.row];
-    //NSString *versee = [dictVerse valueForKey:@"verse_html"];
-    
     cell.tag = indexPath.row;
-        
-    //[cell.webView loadHTMLString:versee  baseURL:[NSURL fileURLWithPath:[[NSBundle mainBundle]bundlePath]]];
     cell.textLabel.numberOfLines = 0;
-    cell.textLabel.text = [dictVerse valueForKey:@"verse_text"];
+    UIFont *cellFont = [UIFont fontWithName:kFontName size:FONT_SIZE] ?: [UIFont systemFontOfSize:FONT_SIZE];
+    cell.textLabel.font = cellFont;
+    cell.textLabel.attributedText = [self mb_attributedVerse:[dictVerse valueForKey:@"verse_text"] font:cellFont];
+    cell.accessibilityLabel = [dictVerse valueForKey:@"verse_text"];
     
     return cell;
 }
@@ -635,14 +683,12 @@
 #pragma mark UISearchBar delegate
 
 - (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText{
-    
     if([arrayResults count] > 0){
-        
         self.arrayResults = nil;
         [tableViewSearch reloadData];
-        
-        
     }
+    self.mbHasSearched = NO;            //+20261120
+    [self mb_updateStateView];          //+20261120
     
     BOOL isCustomkb = [[NSUserDefaults standardUserDefaults] boolForKey:kCustomKB];
     
@@ -721,8 +767,11 @@
     }
     
     
+    //+20261120 Remember exactly what is searched for (the same text BibleDao receives), to highlight it.
+    self.mbHighlightQuery = [self.primaryL isEqualToString:kLangPrimary] ? labelSearch.text : searchBar.text;
+    self.mbHasSearched = NO;
+    self.mbStateLabel.hidden = YES;
     [self.activityView startAnimating];
-    
     [self performSelector:@selector(showResult) withObject:nil afterDelay:.1];
     
     [self.searchBarr resignFirstResponder];
@@ -841,6 +890,18 @@
     
     searchBar.inputAccessoryView = tolBar;//ios6
     
+    //+20261120 Scope buttons: rounded selected state and semibold titles (same buttons, same actions).
+    for (UIButton *scopeButton in @[all, old, new, book]) {
+        scopeButton.layer.cornerRadius = 8.0;
+        scopeButton.layer.cornerCurve = kCACornerCurveContinuous;
+        scopeButton.clipsToBounds = YES;
+        scopeButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    }
+    if (book.frame.size.width < 50) {
+        CGRect bookFrame = book.frame;
+        bookFrame.size.width = MAX(50, [book sizeThatFits:CGSizeMake(CGFLOAT_MAX, 38)].width + 20);
+        book.frame = bookFrame;
+    }
     if (self.scopeValue == 0) {
         all.selected = true;
     } else if (self.scopeValue == 1) {
@@ -975,6 +1036,8 @@
 -(void)threadStopAnimating
 {
     [self.activityView stopAnimating];
+    self.mbHasSearched = YES;           //+20261120 results are already set; show the no-results message if none
+    [self mb_updateStateView];          //+20261120
     
     //[self.activityView removeFromSuperview];
     
@@ -1075,5 +1138,139 @@
 }
 
 
+
+#pragma mark - Appearance (+20261120 Search redesign)
+//
+// Presentation only. Night or Light follows the app's own Night mode (kNightTime), as on the other screens;
+// the accent is the existing theme colour, [UIColor defaultWindowColor]. No search logic or data changes.
+
+- (void) mb_applySearchAppearance{
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    UITraitCollection *traits = [UITraitCollection traitCollectionWithUserInterfaceStyle:style];
+    UIColor *accent = [UIColor defaultWindowColor];
+    UIColor *background = [[UIColor systemGroupedBackgroundColor] resolvedColorWithTraitCollection:traits];
+    UIColor *separator = [[UIColor separatorColor] resolvedColorWithTraitCollection:traits];
+
+    self.overrideUserInterfaceStyle = style;
+    self.view.backgroundColor = background;
+
+    // Navigation bar: same surface as the screen, so bar, search field and results read as one page.
+    // The reading screen re-applies its own bar appearance in its viewWillAppear: when it reappears.
+    if (self.navigationController != nil) {
+        UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
+        [barAppearance configureWithOpaqueBackground];
+        barAppearance.backgroundColor = background;
+        barAppearance.shadowColor = separator;
+        barAppearance.titleTextAttributes = @{NSForegroundColorAttributeName: [[UIColor labelColor] resolvedColorWithTraitCollection:traits]};
+        UINavigationBarAppearance *edgeAppearance = [barAppearance copy];
+        edgeAppearance.shadowColor = [UIColor clearColor];
+        UINavigationBar *navigationBar = self.navigationController.navigationBar;
+        navigationBar.standardAppearance = barAppearance;
+        navigationBar.compactAppearance = barAppearance;
+        navigationBar.scrollEdgeAppearance = edgeAppearance;
+        navigationBar.compactScrollEdgeAppearance = edgeAppearance;
+    }
+
+    // Search field: a rounded, softly raised field (white with a hairline on grey in Light, dark grey on
+    // black in Night), magnifier and placeholder in secondary colours, cursor in the theme colour.
+    UISearchBar *searchBar = self.searchBarr;
+    searchBar.overrideUserInterfaceStyle = style;
+    searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    searchBar.barTintColor = nil;
+    searchBar.backgroundColor = [UIColor clearColor];
+    searchBar.tintColor = accent;
+    UITextField *field = searchBar.searchTextField;
+    field.backgroundColor = isdark ? [UIColor colorWithWhite:0.17 alpha:1.0] : [UIColor whiteColor];
+    field.textColor = [[UIColor labelColor] resolvedColorWithTraitCollection:traits];
+    field.font = [UIFont systemFontOfSize:17];
+    field.layer.cornerRadius = 10.0;
+    field.layer.cornerCurve = kCACornerCurveContinuous;
+    field.layer.borderWidth = isdark ? 0.0 : 0.5;
+    field.layer.borderColor = separator.CGColor;
+    field.clipsToBounds = YES;
+    field.keyboardAppearance = isdark ? UIKeyboardAppearanceDark : UIKeyboardAppearanceLight;
+    field.clearButtonMode = UITextFieldViewModeWhileEditing;
+    field.leftView.tintColor = [[UIColor secondaryLabelColor] resolvedColorWithTraitCollection:traits];
+    field.attributedPlaceholder = [[NSAttributedString alloc] initWithString:NSLocalizedString(@"Search", @"")
+                                                                  attributes:@{NSForegroundColorAttributeName: [[UIColor placeholderTextColor] resolvedColorWithTraitCollection:traits]}];
+
+    // Malayalam preview / match-count band under the bar (shown when Malayalam is the primary language).
+    UILabel *band = self.labelSearch;
+    band.backgroundColor = background;
+    band.textColor = [[UIColor labelColor] resolvedColorWithTraitCollection:traits];
+    band.font = [UIFont fontWithName:kFontName size:17] ?: [UIFont systemFontOfSize:17];
+    [band viewWithTag:kTagSearchLabelBorder].backgroundColor = separator;
+
+    // Results.
+    UITableView *table = self.tableViewSearch;
+    table.backgroundColor = background;
+    table.separatorColor = [UIColor separatorColor];
+    table.sectionIndexColor = accent;
+    table.sectionIndexBackgroundColor = [UIColor clearColor];
+    table.sectionIndexTrackingBackgroundColor = [UIColor clearColor];
+
+    self.activityView.color = [[UIColor secondaryLabelColor] resolvedColorWithTraitCollection:traits];
+
+    [self mb_updateStateView];
+    [table reloadData];
+}
+
+// Empty and no-results messages behind the results (hidden while results or the spinner are showing).
+- (void) mb_updateStateView{
+
+    UILabel *label = self.mbStateLabel;
+    if (label == nil) return;
+    if ([self getResultDataCount] > 0 || self.activityView.isAnimating) {
+        label.hidden = YES;
+        return;
+    }
+    NSString *title;
+    NSString *detail;
+    if (self.mbHasSearched) {
+        title = NSLocalizedString(@"No matches found", @"");
+        detail = NSLocalizedString(@"Try a different word, or search All instead of one book.", @"");
+    } else {
+        title = NSLocalizedString(@"Search the Bible", @"");
+        detail = NSLocalizedString(@"Type a word, then tap Search.", @"");
+    }
+    NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+    paragraph.alignment = NSTextAlignmentCenter;
+    paragraph.paragraphSpacing = 6.0;
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:[title stringByAppendingString:@"\n"]
+                                                                             attributes:@{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline],
+                                                                                          NSForegroundColorAttributeName: [UIColor secondaryLabelColor],
+                                                                                          NSParagraphStyleAttributeName: paragraph}];
+    [text appendAttributedString:[[NSAttributedString alloc] initWithString:detail
+                                                                 attributes:@{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline],
+                                                                              NSForegroundColorAttributeName: [UIColor tertiaryLabelColor],
+                                                                              NSParagraphStyleAttributeName: paragraph}]];
+    label.attributedText = text;
+    label.hidden = NO;
+}
+
+// The verse with every occurrence of the searched text highlighted (the same substring match the search uses).
+- (NSAttributedString *) mb_attributedVerse:(NSString *)verse font:(UIFont *)font{
+
+    if (verse == nil) verse = @"";
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:verse
+                                                                             attributes:@{NSFontAttributeName: font,
+                                                                                          NSForegroundColorAttributeName: [UIColor labelColor]}];
+    NSString *query = [self.mbHighlightQuery stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (query.length == 0 || verse.length == 0) return text;
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIColor *mark = [[UIColor defaultWindowColor] colorWithAlphaComponent:(isdark ? 0.38 : 0.22)];
+    NSRange searchRange = NSMakeRange(0, verse.length);
+    while (searchRange.length > 0) {
+        NSRange found = [verse rangeOfString:query options:NSCaseInsensitiveSearch range:searchRange];
+        if (found.location == NSNotFound || found.length == 0) break;
+        [text addAttribute:NSBackgroundColorAttributeName value:mark range:found];
+        NSUInteger next = NSMaxRange(found);
+        searchRange = NSMakeRange(next, verse.length - next);
+    }
+    return text;
+}
 
 @end
