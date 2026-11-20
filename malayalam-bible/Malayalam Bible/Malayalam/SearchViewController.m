@@ -40,6 +40,25 @@ static const NSInteger kTagSearchLabelBorder = 9901;
 static const CGFloat kSearchMaxContentWidth = 720.0;   // iPad: centred, readable result column
 static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field never spans the whole bar
 
+//+20261120 Scope bar above the keyboard. A plain view (not a UIToolbar): on iOS 26 a toolbar no longer paints
+// barTintColor and puts every button on a white glass capsule, which made the white titles invisible.
+// It grows by the bottom safe area, so with a hardware keyboard (bar at the screen's bottom edge) the buttons
+// stay clear of the home indicator and the rounded corners.
+@interface MBSearchScopeBar : UIView
+@end
+
+@implementation MBSearchScopeBar
+- (CGSize)intrinsicContentSize
+{
+    return CGSizeMake(UIViewNoIntrinsicMetric, 52.0 + self.safeAreaInsets.bottom);
+}
+- (void)safeAreaInsetsDidChange
+{
+    [super safeAreaInsetsDidChange];
+    [self invalidateIntrinsicContentSize];
+}
+@end
+
 @interface SearchViewController ()
 @property (nonatomic, copy) NSString *mbHighlightQuery;   // the text that was searched for, to highlight it
 @property (nonatomic, assign) BOOL mbHasSearched;         // a search finished for the current text
@@ -47,6 +66,7 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
 - (void) mb_applySearchAppearance;
 - (void) mb_updateStateView;
 - (NSAttributedString *) mb_attributedVerse:(NSString *)verse font:(UIFont *)font;
+- (UIColor *) mb_scopeTitleColorOnColor:(UIColor *)color;
 @end
 
 @implementation SearchViewController
@@ -811,7 +831,6 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
     [all setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
     [all setBackgroundImage:nil forState:UIControlStateNormal];
     
-    UIBarButtonItem *allbutton = [[UIBarButtonItem alloc] initWithCustomView:all];
     
 
     
@@ -832,12 +851,7 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
     [old setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
     [old setBackgroundImage:nil forState:UIControlStateNormal];
     
-    UIBarButtonItem *oldbutton = [[UIBarButtonItem alloc] initWithCustomView:old];
     
-    UIBarButtonItem *flexx1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-    UIBarButtonItem *flexx2 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-    UIBarButtonItem *flexx3 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-    UIBarButtonItem *flexx4 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
     UIButton *new = [UIButton buttonWithType:UIButtonTypeCustom];
     [new setTitle:@"New" forState:UIControlStateNormal];
@@ -856,7 +870,6 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
     [new setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
     [new setBackgroundImage:nil forState:UIControlStateNormal];
     
-    UIBarButtonItem *newbutton = [[UIBarButtonItem alloc] initWithCustomView:new];
     
     
     
@@ -878,30 +891,74 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
     [book setBackgroundImage:selectedBackgroundImage forState:UIControlStateSelected];
     [book setBackgroundImage:nil forState:UIControlStateNormal];
     
-    UIBarButtonItem *bookbutton = [[UIBarButtonItem alloc] initWithCustomView:book];
     //UIBarButtonItem *flexx1 = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
     
-    UIToolbar *tolBar = [[UIToolbar alloc] init];
-    tolBar.items  = [NSArray arrayWithObjects: allbutton,flexx1,oldbutton,flexx2, newbutton,flexx3, bookbutton, nil];
-    
-    tolBar.frame = CGRectMake(0, 0, self.view.frame.size.width, 40);
-    tolBar.barTintColor = [UIColor defaultWindowColor];
-    
-    searchBar.inputAccessoryView = tolBar;//ios6
-    
-    //+20261120 Scope buttons: rounded selected state and semibold titles (same buttons, same actions).
+    //+20261120 Scope bar: a plain view instead of the UIToolbar (see MBSearchScopeBar). Same four buttons, same
+    // properties, same segementClicked: and scope values; only the container and the colours changed.
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    UITraitCollection *traits = [UITraitCollection traitCollectionWithUserInterfaceStyle:style];
+
+    // Colours: bar #F2F2F7 / #1C1C1E, unselected chip #FFFFFF / #2C2C2E with #000000 / #FFFFFF titles,
+    // selected chip in the theme colour with white or black text, whichever reads better on it.
+    UIColor *barColor = isdark ? [UIColor colorWithRed:28/255.0 green:28/255.0 blue:30/255.0 alpha:1.0]
+                               : [UIColor colorWithRed:242/255.0 green:242/255.0 blue:247/255.0 alpha:1.0];
+    UIColor *chipColor = isdark ? [UIColor colorWithRed:44/255.0 green:44/255.0 blue:46/255.0 alpha:1.0] : [UIColor whiteColor];
+    UIColor *chipTitleColor = isdark ? [UIColor whiteColor] : [UIColor blackColor];
+    UIColor *accent = [UIColor defaultWindowColor];
+    UIColor *selectedTitleColor = [self mb_scopeTitleColorOnColor:accent];
+    UIImage *chipImage = [self imageFromColor:chipColor];
+    UIImage *accentImage = [self imageFromColor:accent];
+
+    MBSearchScopeBar *scopeBar = [[MBSearchScopeBar alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 52.0)];
+    scopeBar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    scopeBar.overrideUserInterfaceStyle = style;
+    scopeBar.backgroundColor = barColor;
+    UIView *hairline = [[UIView alloc] initWithFrame:CGRectMake(0, 0, scopeBar.bounds.size.width, 1.0 / MAX(1.0, self.view.traitCollection.displayScale))];
+    hairline.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    hairline.backgroundColor = [[UIColor separatorColor] resolvedColorWithTraitCollection:traits];
+    [scopeBar addSubview:hairline];
+
     for (UIButton *scopeButton in @[all, old, new, book]) {
-        scopeButton.layer.cornerRadius = 8.0;
+        [scopeButton setBackgroundImage:chipImage forState:UIControlStateNormal];
+        [scopeButton setBackgroundImage:accentImage forState:UIControlStateSelected];
+        [scopeButton setBackgroundImage:accentImage forState:UIControlStateSelected | UIControlStateHighlighted];
+        [scopeButton setTitleColor:chipTitleColor forState:UIControlStateNormal];
+        [scopeButton setTitleColor:selectedTitleColor forState:UIControlStateSelected];
+        [scopeButton setTitleColor:selectedTitleColor forState:UIControlStateSelected | UIControlStateHighlighted];
+        scopeButton.layer.cornerRadius = 10.0;
         scopeButton.layer.cornerCurve = kCACornerCurveContinuous;
         scopeButton.clipsToBounds = YES;
         scopeButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+        scopeButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+        scopeButton.titleLabel.minimumScaleFactor = 0.75;
+        scopeButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        scopeButton.accessibilityTraits |= UIAccessibilityTraitButton;
     }
-    if (book.frame.size.width < 50) {
-        CGRect bookFrame = book.frame;
-        bookFrame.size.width = MAX(50, [book sizeThatFits:CGSizeMake(CGFLOAT_MAX, 38)].width + 20);
-        book.frame = bookFrame;
-    }
+
+    // Four equal buttons, 44 pt tall (at least 44 pt wide on every iPhone), centred and capped at 560 pt on iPad.
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[all, old, new, book]];
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.spacing = 8.0;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    [scopeBar addSubview:stack];
+    NSLayoutConstraint *preferredWidth = [stack.widthAnchor constraintEqualToAnchor:scopeBar.widthAnchor constant:-24.0];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor constraintEqualToAnchor:scopeBar.topAnchor constant:4.0],
+        [stack.heightAnchor constraintEqualToConstant:44.0],
+        [stack.centerXAnchor constraintEqualToAnchor:scopeBar.centerXAnchor],
+        [stack.leadingAnchor constraintGreaterThanOrEqualToAnchor:scopeBar.safeAreaLayoutGuide.leadingAnchor constant:12.0],
+        [stack.trailingAnchor constraintLessThanOrEqualToAnchor:scopeBar.safeAreaLayoutGuide.trailingAnchor constant:-12.0],
+        [stack.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        preferredWidth
+    ]];
+
+    searchBar.inputAccessoryView = scopeBar;
+    [searchBar reloadInputViews];
+
     if (self.scopeValue == 0) {
         all.selected = true;
     } else if (self.scopeValue == 1) {
@@ -1215,6 +1272,25 @@ static const CGFloat kSearchMaxFieldWidth = 640.0;     // iPad: search field nev
 
     [self mb_updateStateView];
     [table reloadData];
+}
+
+// White text when it reaches 3.5:1 on the colour (WCAG contrast), otherwise black: white on red, green (Light),
+// blue, purple and brown; black on cyan, yellow, magenta, orange and the Night palette's bright green.
+- (UIColor *) mb_scopeTitleColorOnColor:(UIColor *)color{
+
+    CGFloat rgb[3] = {0, 0, 0};
+    CGFloat alpha = 0;
+    if (![color getRed:&rgb[0] green:&rgb[1] blue:&rgb[2] alpha:&alpha]) {
+        CGFloat white = 0;
+        [color getWhite:&white alpha:&alpha];
+        rgb[0] = rgb[1] = rgb[2] = white;
+    }
+    for (int i = 0; i < 3; i++) {
+        rgb[i] = (rgb[i] <= 0.03928) ? rgb[i] / 12.92 : pow((rgb[i] + 0.055) / 1.055, 2.4);
+    }
+    CGFloat luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+    CGFloat whiteContrast = 1.05 / (luminance + 0.05);
+    return (whiteContrast >= 3.5) ? [UIColor whiteColor] : [UIColor blackColor];
 }
 
 // Empty and no-results messages behind the results (hidden while results or the spinner are showing).
