@@ -9,13 +9,19 @@
 #import "SelectionController.h"
 #import "MBConstants.h"
 
+//+20261123 Same grouped-card metrics as the parent Settings screen (SettingsViewController).
+static const CGFloat kSelectionRowVerticalMargin = 15.0;   // body text + margins = 52 pt rows, as in Settings
+static const CGFloat kSelectionHeaderSpacing = 12.0;       // Settings' spacing above a section without a header
+static const CGFloat kSelectionFooterSpacing = 8.0;        // Settings' section footer spacing
+
 @implementation SelectionController
 
 @synthesize optionType = _optionType;
 
 - (id)initWithStyle:(UITableViewStyle)style Options:(NSArray *)options
 {
-    self = [super initWithStyle:style];
+    //+20261123 Rounded inset card, as on Settings (Settings still passes UITableViewStyleGrouped).
+    self = [super initWithStyle:UITableViewStyleInsetGrouped];
     if (self) {
         // Custom initialization
         arrayOptions = options;
@@ -41,23 +47,31 @@
     // this screen, so the value here is current.
     BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     self.overrideUserInterfaceStyle = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-    // Navigation bar matching the reading screen's own bar (opaque black in Night, the default bar in Light),
-    // so it is right even when Night mode was just switched in Settings. Set on the shared navigation bar,
-    // as the reading screen does; screens with their own navigationItem appearance (Settings) keep theirs.
+    //+20261123 Grouped surfaces exactly as on Settings: #F2F2F7 page with white card in Light, black page with
+    // #1C1C1E card in Night (system grouped colours, resolved through the override above), system separator,
+    // readable width on iPad.
+    self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.tableView.separatorColor = [UIColor separatorColor];
+    self.tableView.cellLayoutMarginsFollowReadableWidth = YES;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 52.0;
+
+    // Navigation bar: the same opaque bar as Settings (page colour; a hairline only once content scrolls under
+    // it). Set on the shared navigation bar, as before; Settings keeps its own navigationItem appearance and the
+    // reading screen re-applies its bar when it reappears.
+    UITraitCollection *traits = [UITraitCollection traitCollectionWithUserInterfaceStyle:(isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight)];
     UINavigationBarAppearance *barAppearance = [[UINavigationBarAppearance alloc] init];
-    if (isdark) {
-        [barAppearance configureWithOpaqueBackground];
-        barAppearance.backgroundColor = [UIColor blackColor];
-        barAppearance.titleTextAttributes = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
-        barAppearance.shadowColor = [UIColor colorWithWhite:0.25 alpha:1.0];
-    } else {
-        [barAppearance configureWithDefaultBackground];
-    }
+    [barAppearance configureWithOpaqueBackground];
+    barAppearance.backgroundColor = [[UIColor systemGroupedBackgroundColor] resolvedColorWithTraitCollection:traits];
+    barAppearance.titleTextAttributes = @{NSForegroundColorAttributeName: [[UIColor labelColor] resolvedColorWithTraitCollection:traits]};
+    barAppearance.shadowColor = isdark ? [UIColor colorWithWhite:1.0 alpha:0.25] : [[UIColor separatorColor] resolvedColorWithTraitCollection:traits];
+    UINavigationBarAppearance *scrollEdgeAppearance = [barAppearance copy];
+    scrollEdgeAppearance.shadowColor = [UIColor clearColor];
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
     navigationBar.standardAppearance = barAppearance;
     navigationBar.compactAppearance = barAppearance;
-    navigationBar.scrollEdgeAppearance = barAppearance;
-    navigationBar.compactScrollEdgeAppearance = barAppearance;
+    navigationBar.scrollEdgeAppearance = scrollEdgeAppearance;
+    navigationBar.compactScrollEdgeAppearance = scrollEdgeAppearance;
 
     // Uncomment the following line to preserve selection between presentations.
     // self.clearsSelectionOnViewWillAppear = NO;
@@ -168,7 +182,19 @@
     }
     NSDictionary *dict = [arrayOptions objectAtIndex:indexPath.row];
         
-    cell.textLabel.text = [dict valueForKey:@"display_value"];
+    //+20261123 Row text styled like Settings rows: body font, Dynamic Type, wraps instead of clipping, 52 pt rows.
+    // The checkmark and selection logic below are unchanged.
+    UIListContentConfiguration *content = [UIListContentConfiguration cellConfiguration];
+    content.text = [dict valueForKey:@"display_value"];
+    content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    content.textProperties.adjustsFontForContentSizeCategory = YES;
+    content.textProperties.color = [UIColor labelColor];
+    content.textProperties.numberOfLines = 0;
+    NSDirectionalEdgeInsets margins = content.directionalLayoutMargins;
+    margins.top = kSelectionRowVerticalMargin;
+    margins.bottom = kSelectionRowVerticalMargin;
+    content.directionalLayoutMargins = margins;
+    cell.contentConfiguration = content;
     if([[dict valueForKey:@"isSelected"] boolValue]){
         
         
@@ -224,6 +250,17 @@
 */
 
 #pragma mark - Table view delegate
+
+//+20261123 Section spacing as on Settings.
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+{
+    return kSelectionHeaderSpacing;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
+{
+    return kSelectionFooterSpacing;
+}
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
