@@ -2064,33 +2064,118 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
 // Actions are unchanged: book -> handleBookTap:, chapter -> handleChapterTap:, arrows -> moveToNext:. As before,
 // the arrows stay tappable at the first / last chapter (moveToNext: shows its bounce) and are only dimmed.
 
-static const CGFloat kMBGlassControlHeight = 44.0;
-static const CGFloat kMBGlassControlGap = 8.0;
+// One shared standard for the four controls (+20261123 standardised; height was 44 pt, pill padding 18 / 16 pt):
+static const CGFloat kMBGlassControlHeight = 48.0;          // all four controls; arrows are height x height circles
+static const CGFloat kMBGlassControlGap = 8.0;              // between adjacent controls
+static const CGFloat kMBGlassPillHorizontalPadding = 16.0;  // same on both sides of the book and chapter pills
+static const CGFloat kMBGlassPillImagePadding = 6.0;        // between pill title and its chevron
+static const CGFloat kMBGlassPillMinWidth = 88.0;           // tap target for short titles
+static const CGFloat kMBGlassPillFontSize = 16.0;           // book and chapter titles, semibold
+static const CGFloat kMBGlassPillMinFontSize = 13.0;        // smallest one-line size for a long title (scale ~0.81)
+static const CGFloat kMBGlassPillMinTwoLineFontSize = 11.0; // smallest size for the two-line fallback
+static const CGFloat kMBGlassChevronPointSize = 12.0;       // dropdown chevron in the pills
+static const CGFloat kMBGlassArrowPointSize = 18.0;         // < and > symbols
+
+// Title shown on one line: no line break at its spaces (a no-break space looks identical). Without this,
+// "സംഖ്യാ പുസ്തകം" wrapped after the first word and the pill showed only "സംഖ്യാ…". Display only; the data is unchanged.
+static NSString *MBSingleLinePillTitle(NSString *title) {
+    return [(title ?: @"") stringByReplacingOccurrencesOfString:@" " withString:@"\u00A0"];
+}
+
+static UIImage *MBPillChevronImage(void) API_AVAILABLE(ios(26.0)) {
+    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:kMBGlassChevronPointSize weight:UIImageSymbolWeightBold];
+    return [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbol] imageWithTintColor:[UIColor defaultWindowColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+// Font size to fit (configuration-based buttons do not support adjustsFontSizeToFitWidth), for a pill of pillWidth.
+// Returns the text to show and sets *fontSize:
+//  1. one line at the largest size from kMBGlassPillFontSize down to kMBGlassPillMinFontSize (0.5 pt steps) that
+//     fits: short titles keep the normal size, longer ones shrink only as far as needed;
+//  2. if that is not enough and the title has a space: two balanced lines (split at the space that gives the
+//     narrowest lines, never right after a book number) at the largest size down to kMBGlassPillMinTwoLineFontSize
+//     at which both lines fit the pill's width and height (measured with the real Malayalam glyph metrics);
+//  3. otherwise one line at kMBGlassPillMinFontSize, truncated with "..." as a last resort.
+- (NSString *)mb_fittedPillTitle:(NSString *)title pillWidth:(CGFloat)pillWidth fontSize:(CGFloat *)fontSize API_AVAILABLE(ios(26.0)) {
+
+    NSString *source = title ?: @"";
+    NSString *oneLine = MBSingleLinePillTitle(source);
+    CGFloat textRoom = pillWidth - 2 * kMBGlassPillHorizontalPadding - kMBGlassPillImagePadding - MBPillChevronImage().size.width - 4.0;   // 4 pt rounding margin
+    CGFloat heightRoom = kMBGlassControlHeight - 4.0;
+    NSStringDrawingOptions options = NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading;
+
+    for (CGFloat size = kMBGlassPillFontSize; size >= kMBGlassPillMinFontSize; size -= 0.5) {
+        NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:size weight:UIFontWeightSemibold]};
+        if (ceil([oneLine sizeWithAttributes:attributes].width) <= textRoom) {
+            *fontSize = size;
+            return oneLine;
+        }
+    }
+
+    // Two lines: the split whose wider line is narrowest.
+    NSDictionary *probe = @{NSFontAttributeName: [UIFont systemFontOfSize:kMBGlassPillMinTwoLineFontSize weight:UIFontWeightSemibold]};
+    NSString *bestTwoLines = nil;
+    CGFloat bestWidest = CGFLOAT_MAX;
+    NSRange search = NSMakeRange(0, source.length);
+    while (search.length > 0) {
+        NSRange space = [source rangeOfString:@" " options:0 range:search];
+        if (space.location == NSNotFound) break;
+        NSString *first = [[source substringToIndex:space.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        NSString *second = [[source substringFromIndex:NSMaxRange(space)] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        BOOL firstIsNumber = first.length > 0 && [first rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]].location == NSNotFound;
+        if (first.length > 0 && second.length > 0 && !firstIsNumber) {
+            NSString *candidate = [NSString stringWithFormat:@"%@\n%@", MBSingleLinePillTitle(first), MBSingleLinePillTitle(second)];
+            CGFloat widest = ceil([candidate boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX) options:options attributes:probe context:nil].size.width);
+            if (widest < bestWidest) {
+                bestWidest = widest;
+                bestTwoLines = candidate;
+            }
+        }
+        search = NSMakeRange(NSMaxRange(space), source.length - NSMaxRange(space));
+    }
+    if (bestTwoLines != nil) {
+        for (CGFloat size = MIN(kMBGlassPillFontSize, 14.0); size >= kMBGlassPillMinTwoLineFontSize; size -= 0.5) {
+            NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:size weight:UIFontWeightSemibold]};
+            CGRect bounds = [bestTwoLines boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX) options:options attributes:attributes context:nil];
+            if (ceil(bounds.size.width) <= textRoom && ceil(bounds.size.height) <= heightRoom) {
+                *fontSize = size;
+                return bestTwoLines;
+            }
+        }
+    }
+
+    *fontSize = kMBGlassPillMinFontSize;
+    return oneLine;
+}
 
 - (UIButton *)mb_glassPillWithTitle:(NSString *)title action:(SEL)action API_AVAILABLE(ios(26.0)) {
+    return [self mb_glassPillWithTitle:title fontSize:kMBGlassPillFontSize action:action];
+}
+
+- (UIButton *)mb_glassPillWithTitle:(NSString *)title fontSize:(CGFloat)fontSize action:(SEL)action API_AVAILABLE(ios(26.0)) {
 
     UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
-    config.attributedTitle = [[NSAttributedString alloc] initWithString:(title ?: @"")
-                                                             attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold]}];
+    config.attributedTitle = [[NSAttributedString alloc] initWithString:MBSingleLinePillTitle(title)
+                                                             attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold]}];
     config.titleLineBreakMode = NSLineBreakByTruncatingTail;
+    config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;   // centred, also for a two-line title
     config.baseForegroundColor = [UIColor labelColor];
-    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightBold];
-    config.image = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbol] imageWithTintColor:[UIColor defaultWindowColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+    config.image = MBPillChevronImage();
     config.imagePlacement = NSDirectionalRectEdgeTrailing;
-    config.imagePadding = 6;
-    config.contentInsets = NSDirectionalEdgeInsetsMake(8, 18, 8, 16);   // roomy pill, large tap target
+    config.imagePadding = kMBGlassPillImagePadding;
+    // Equal side padding; no vertical padding: the pill's fixed height centres title and chevron on the row's line.
+    config.contentInsets = NSDirectionalEdgeInsetsMake(0, kMBGlassPillHorizontalPadding, 0, kMBGlassPillHorizontalPadding);
     config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
     UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    button.accessibilityLabel = title;
+    button.accessibilityLabel = [title stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
     return button;
 }
 
 - (UIButton *)mb_glassArrowNext:(BOOL)isNext dimmed:(BOOL)dimmed API_AVAILABLE(ios(26.0)) {
 
     UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
-    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:kMBGlassArrowPointSize weight:UIImageSymbolWeightSemibold];
     config.image = [UIImage systemImageNamed:(isNext ? @"chevron.right" : @"chevron.left") withConfiguration:symbol];
     UIColor *theme = [UIColor defaultWindowColor];
     config.baseForegroundColor = dimmed ? [theme colorWithAlphaComponent:0.3] : theme;
@@ -2135,6 +2220,11 @@ static const CGFloat kMBGlassControlGap = 8.0;
         UIButton *next = [self mb_glassArrowNext:YES dimmed:atLast];
         previous.frame = CGRectMake(0, 0, kMBGlassControlHeight, kMBGlassControlHeight);
         next.frame = CGRectMake(width - kMBGlassControlHeight, 0, kMBGlassControlHeight, kMBGlassControlHeight);
+        // Keep every control centred on the bar's line and the right-hand ones right-aligned, even if the bar
+        // resizes the title view (e.g. a shorter landscape bar).
+        UIViewAutoresizing centred = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+        previous.autoresizingMask = centred | UIViewAutoresizingFlexibleRightMargin;
+        next.autoresizingMask = centred | UIViewAutoresizingFlexibleLeftMargin;
         [container addSubview:previous];
         [container addSubview:next];
 
@@ -2145,20 +2235,38 @@ static const CGFloat kMBGlassControlGap = 8.0;
             // As before on iPad: one control with book and chapter, opening the chapter picker.
             NSString *title = [NSString stringWithFormat:@"%@  %@", [self.selectedBook shortName], chapterText];
             UIButton *pill = [self mb_glassPillWithTitle:title action:@selector(handleChapterTap:)];
-            CGFloat pillWidth = MIN(innerRight - innerLeft, MAX(88, ceil(pill.intrinsicContentSize.width)));
+            CGFloat pillRoom = innerRight - innerLeft;
+            CGFloat pillWidth = MIN(pillRoom, MAX(kMBGlassPillMinWidth, ceil(pill.intrinsicContentSize.width)));
+            if (ceil(pill.intrinsicContentSize.width) > pillRoom) {   // too long at the normal size: fit it
+                CGFloat fitted = kMBGlassPillFontSize;
+                NSString *shown = [self mb_fittedPillTitle:title pillWidth:pillWidth fontSize:&fitted];
+                pill = [self mb_glassPillWithTitle:shown fontSize:fitted action:@selector(handleChapterTap:)];
+            }
             pill.frame = CGRectMake(round((width - pillWidth) / 2.0), 0, pillWidth, kMBGlassControlHeight);
+            pill.autoresizingMask = centred | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
             [container addSubview:pill];
         } else {
             // The counter always gets its full width; the book pill gets the rest and truncates if it has to.
             UIButton *chapter = [self mb_glassPillWithTitle:chapterText action:@selector(handleChapterTap:)];
-            CGFloat chapterWidth = MAX(88, ceil(chapter.intrinsicContentSize.width));
+            CGFloat chapterWidth = MAX(kMBGlassPillMinWidth, ceil(chapter.intrinsicContentSize.width));
             chapter.frame = CGRectMake(innerRight - chapterWidth, 0, chapterWidth, kMBGlassControlHeight);
+            chapter.autoresizingMask = centred | UIViewAutoresizingFlexibleLeftMargin;
             [container addSubview:chapter];
 
-            UIButton *book = [self mb_glassPillWithTitle:[self.selectedBook shortName] action:@selector(handleBookTap:)];
+            // Book pill: the whole space left of the counter is available. A title that fits keeps the normal font;
+            // a longer one gets the full space and the largest font at which the complete title fits.
+            NSString *bookTitle = [self.selectedBook shortName];
+            UIButton *book = [self mb_glassPillWithTitle:bookTitle action:@selector(handleBookTap:)];
             CGFloat bookRoom = CGRectGetMinX(chapter.frame) - kMBGlassControlGap - innerLeft;
-            CGFloat bookWidth = MIN(bookRoom, MAX(MIN(88, bookRoom), ceil(book.intrinsicContentSize.width)));
+            CGFloat bookNatural = ceil(book.intrinsicContentSize.width);
+            CGFloat bookWidth = MIN(bookRoom, MAX(MIN(kMBGlassPillMinWidth, bookRoom), bookNatural));
+            if (bookNatural > bookRoom) {
+                CGFloat fitted = kMBGlassPillFontSize;
+                NSString *shown = [self mb_fittedPillTitle:bookTitle pillWidth:bookWidth fontSize:&fitted];
+                book = [self mb_glassPillWithTitle:shown fontSize:fitted action:@selector(handleBookTap:)];
+            }
             book.frame = CGRectMake(innerLeft, 0, MAX(0, bookWidth), kMBGlassControlHeight);
+            book.autoresizingMask = centred | UIViewAutoresizingFlexibleRightMargin;
             [container addSubview:book];
         }
 
