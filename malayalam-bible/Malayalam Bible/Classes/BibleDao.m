@@ -775,7 +775,7 @@ const CGFloat Line_Height = 1.2;
     const char *dbpath = [pathname UTF8String];
     sqlite3 *bibleDB = nil;
     
-    NSMutableString *functions = [NSMutableString stringWithString:@" var newClassName; var i; var isExist; var classes; function scrollToDivId(divid){   var ele = document.getElementById(divid); window.scrollTo(ele.offsetLeft,ele.offsetTop); window.location=\"melt://endscroll/yes\"}  function scrollToTop(){ window.scrollTo(0,0); } function getPosition(divid){ var ele = document.getElementById(divid); return ele.offsetTop; }"];//el.style.color=\"#FF0000\";
+    NSMutableString *functions = [NSMutableString stringWithString:@" var newClassName; var i; var isExist; var classes; function scrollToDivId(divid){   var ele = document.getElementById(divid); window.scrollTo(ele.offsetLeft,ele.offsetTop); MBPost('endscroll','yes');}  function scrollToTop(){ window.scrollTo(0,0); } function getPosition(divid){ var ele = document.getElementById(divid); return ele.offsetTop; }"];//el.style.color=\"#FF0000\";
     //el.style.fontWeight == 'bold' ? 'normal' : 'bold';
     //scrollFromY(window.pageYOffset);
     //function scrollFromY(yPos) { for(var i = yPos; i > 0; i--) {(function() setTimeout(function(){window.scrollTo(0,yPos);},100); } }
@@ -837,7 +837,20 @@ const CGFloat Line_Height = 1.2;
     [functions appendFormat:@" function selectBMVerse(fontid, colorvalue){ var elem = document.getElementById(fontid); elem.className = \"underline\"; } "];
     
     
-    [functions appendFormat:@" function verseClickedInitate(vid){ window.location = \"melt://verseClicked/\"+vid+\"\";} "];
+    [functions appendFormat:@" function verseClickedInitate(vid){ MBPost('verseClicked', vid); } "];
+
+    //+20261123 Phase 3a (WKWebView preparation). One page-to-app message helper:
+    //  - in a WKWebView that registers the "mb" message handler: postMessage({type, value});
+    //  - otherwise (today's UIWebView): the existing melt://<type>/<value> navigation, handled unchanged by
+    //    webView:shouldStartLoadWithRequest:navigationType: (verseClicked, endscroll).
+    // The WKWebView-only part below adds what WKWebView needs and changes nothing under UIWebView:
+    //  - a viewport at the web view's width with text-size adjustment off (without it WKWebView lays the page out
+    //    980 px wide and the Malayalam text is tiny). Not added under UIWebView, where width=device-width is the
+    //    full screen width while the reading web view is narrower (verse-index column), which would clip the text;
+    //  - a listener that reports taps outside verses ("outsideTap"); verse text (Font-N) and verse numbers (<a>)
+    //    are ignored. Under UIWebView the existing native outside-tap check stays the only one.
+    // Appended with appendString: the JavaScript contains '%'.
+    [functions appendString:@" function MBNativeBridge(){ return (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mb) ? window.webkit.messageHandlers.mb : null; } function MBPost(type, value){ var bridge = MBNativeBridge(); if(bridge){ bridge.postMessage({type: String(type), value: String(value)}); }else{ window.location = 'melt://' + type + '/' + value; } } if(MBNativeBridge()){ var mbViewport = document.createElement('meta'); mbViewport.name = 'viewport'; mbViewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'; document.head.appendChild(mbViewport); var mbTextSize = document.createElement('style'); mbTextSize.textContent = 'html{-webkit-text-size-adjust:100%;}'; document.head.appendChild(mbTextSize); document.addEventListener('click', function(e){ var n = e.target; while(n && n !== document){ if(n.tagName === 'A' || (n.id && n.id.indexOf('Font-') === 0)){ return; } n = n.parentNode; } MBPost('outsideTap', '1'); }, true); } "];
     //
     
     NSString *jsssource = @"";//<meta name=\"viewport\" content=\"width=device-width - 25\" />";
@@ -1082,7 +1095,7 @@ const CGFloat Line_Height = 1.2;
                 NSString *fontid = [NSString stringWithFormat:@"Font-%li",(long)[key integerValue]];
                 NSString *noteid = [NSString stringWithFormat:@"Note-%li",(long)[key integerValue]];
                 
-                NSString *content = [NSString stringWithFormat:@"<div id=\"%@\"><a id=\"%@\" href=\"melt://chapterClicked/%lu\"></a><FONT id=\"%@\"  colorcode=\"\" bookmarkcolor=\"\" isselected=\"\" onClick=\"window.open('melt://verseClicked/%lu')\">%@</FONT></div><hr/>", divid,noteid,(unsigned long)[verses count],fontid, (unsigned long)[verses count], primaryVerse];
+                NSString *content = [NSString stringWithFormat:@"<div id=\"%@\"><a id=\"%@\" href=\"melt://chapterClicked/%lu\"></a><FONT id=\"%@\"  colorcode=\"\" bookmarkcolor=\"\" isselected=\"\" onClick=\"verseClickedInitate('%lu')\">%@</FONT></div><hr/>", divid,noteid,(unsigned long)[verses count],fontid, (unsigned long)[verses count], primaryVerse];
                 
                 if(rge.length > 0){
                     
@@ -1113,7 +1126,7 @@ const CGFloat Line_Height = 1.2;
                 
                 
                 
-                [mString appendFormat:@"<div id=\"%@\"><a id=\"%@\" href=\"melt://chapterClicked/%lu\"></a><FONT id=\"%@\"  colorcode=\"\" bookmarkcolor=\"\" isselected=\"\" onClick=\"window.open('melt://verseClicked/%lu')\">%@</FONT></div><hr/>", divid,noteid,(unsigned long)[verses count],fontid, (unsigned long)[verses count], primaryVerse];
+                [mString appendFormat:@"<div id=\"%@\"><a id=\"%@\" href=\"melt://chapterClicked/%lu\"></a><FONT id=\"%@\"  colorcode=\"\" bookmarkcolor=\"\" isselected=\"\" onClick=\"verseClickedInitate('%lu')\">%@</FONT></div><hr/>", divid,noteid,(unsigned long)[verses count],fontid, (unsigned long)[verses count], primaryVerse];
                 
                 [verses addObject:dictVerse];
             }
