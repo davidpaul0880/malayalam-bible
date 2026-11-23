@@ -123,6 +123,7 @@ __VA_ARGS__ \
 //+20261123 iOS 26 Liquid Glass navigation controls (native bar button items instead of the custom title view)
 @property (strong, nonatomic) UIBarButtonItem *mbExpandItem;   // iPad full-width / split toggle
 @property (strong, nonatomic) UIBarButtonItem *mbBooksItem;    // iPad split-view "Books" button
+@property (assign, nonatomic) CGFloat mbGlassItemsWidth;        // screen width the glass controls were sized for
 - (void)mb_installGlassNavigationItems;
 - (void)mb_setExpandBarButtonItem:(UIBarButtonItem *)item;
 - (void)mb_setBooksBarButtonItem:(UIBarButtonItem *)item animated:(BOOL)animated;
@@ -1822,6 +1823,10 @@ static const CGFloat kGlassShowThreshold = 12.0;
             appearance.shadowColor = [UIColor clearColor];
             if (self.webViewVerses.scrollView != nil) {
                 [self setContentScrollView:self.webViewVerses.scrollView forEdge:NSDirectionalRectEdgeTop];
+                // The text now reaches the bottom edge; the system's bottom fade would leave a half-faded line there.
+                // Lines pass cleanly behind the floating glass capsule instead (the capsule is the only effect).
+                self.webViewVerses.scrollView.bottomEdgeEffect.hidden = YES;
+                self.tableViewVerses.bottomEdgeEffect.hidden = YES;
             }
         }
 
@@ -2047,15 +2052,22 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
 
 #pragma mark iOS 26 Liquid Glass navigation controls (+20261123)
 //
-// iOS 26 with native Liquid Glass only (usesNativeLiquidGlass). The custom title view of older iOS is replaced by
-// standard bar button items, which the system draws on its own glass:
-//   iPhone: [<] [Book v]  ...  [3 / 50 v] [>]
-//   iPad:   [Books] [<] [Book  3 / 50 v]  ...  [expand] [>]
-// Every control calls the same method as before: book -> handleBookTap:, chapter -> handleChapterTap:,
-// arrows -> moveToNext:. As before, the arrows stay tappable at the first / last chapter (moveToNext: shows its
-// bounce) and are only dimmed. iOS 15.6-18 keep the original title view and never reach this code.
+// iOS 26 with native Liquid Glass only (usesNativeLiquidGlass); iOS 15.6-18 keep the original title view.
+// The controls are native UIKit glass buttons (UIButtonConfiguration glass) laid out by this code inside ONE title
+// view with exact frames:
+//   iPhone: [<] [Book v]      [19 / 31 v] [>]
+//   iPad:   [<] [Book  19 / 31 v] [>]          (plus the iPad Books / expand buttons as normal bar items)
+// Why one title view and not four bar button items: the iOS 26 bar sizes custom bar items itself (it ignored
+// their frames, intrinsic sizes and width constraints), so a long book name took its full width and the bar moved
+// the counter and > into its "..." overflow. A title view is sized by its frame, so the layout here is exact:
+// the counter always gets its full width, the book pill gets what is left and truncates a long name with "...".
+// Actions are unchanged: book -> handleBookTap:, chapter -> handleChapterTap:, arrows -> moveToNext:. As before,
+// the arrows stay tappable at the first / last chapter (moveToNext: shows its bounce) and are only dimmed.
 
-- (UIBarButtonItem *)mb_glassSelectorItemWithTitle:(NSString *)title maxWidth:(CGFloat)maxWidth action:(SEL)action API_AVAILABLE(ios(26.0)) {
+static const CGFloat kMBGlassControlHeight = 44.0;
+static const CGFloat kMBGlassControlGap = 8.0;
+
+- (UIButton *)mb_glassPillWithTitle:(NSString *)title action:(SEL)action API_AVAILABLE(ios(26.0)) {
 
     UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
     config.attributedTitle = [[NSAttributedString alloc] initWithString:(title ?: @"")
@@ -2065,31 +2077,30 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightBold];
     config.image = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbol] imageWithTintColor:[UIColor defaultWindowColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
     config.imagePlacement = NSDirectionalRectEdgeTrailing;
-    config.imagePadding = 5;
-    config.contentInsets = NSDirectionalEdgeInsetsMake(0, 14, 0, 12);
+    config.imagePadding = 6;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(8, 18, 8, 16);   // roomy pill, large tap target
+    config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
     UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    button.translatesAutoresizingMaskIntoConstraints = NO;
-    [button.widthAnchor constraintLessThanOrEqualToConstant:maxWidth].active = YES;
-    [button.heightAnchor constraintEqualToConstant:44].active = YES;
     button.accessibilityLabel = title;
-
-    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:button];
-    item.hidesSharedBackground = YES;   // the button is already native glass: no glass behind glass
-    return item;
+    return button;
 }
 
-- (UIBarButtonItem *)mb_glassArrowItemNext:(BOOL)isNext dimmed:(BOOL)dimmed API_AVAILABLE(ios(26.0)) {
+- (UIButton *)mb_glassArrowNext:(BOOL)isNext dimmed:(BOOL)dimmed API_AVAILABLE(ios(26.0)) {
 
-    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:(isNext ? @"chevron.right" : @"chevron.left")]
-                                                             style:UIBarButtonItemStylePlain
-                                                            target:self
-                                                            action:(isNext ? @selector(mb_glassNextTapped:) : @selector(mb_glassPreviousTapped:))];
+    UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
+    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+    config.image = [UIImage systemImageNamed:(isNext ? @"chevron.right" : @"chevron.left") withConfiguration:symbol];
     UIColor *theme = [UIColor defaultWindowColor];
-    item.tintColor = dimmed ? [theme colorWithAlphaComponent:0.3] : theme;
-    item.accessibilityLabel = isNext ? @"Next chapter" : @"Previous chapter";
-    return item;
+    config.baseForegroundColor = dimmed ? [theme colorWithAlphaComponent:0.3] : theme;
+    config.contentInsets = NSDirectionalEdgeInsetsZero;
+    config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+
+    UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    [button addTarget:self action:(isNext ? @selector(mb_glassNextTapped:) : @selector(mb_glassPreviousTapped:)) forControlEvents:UIControlEventTouchUpInside];
+    button.accessibilityLabel = isNext ? @"Next chapter" : @"Previous chapter";
+    return button;
 }
 
 - (void)mb_glassPreviousTapped:(id)sender {
@@ -2107,37 +2118,54 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
         BOOL atFirst = (self.chapterId - 1 < 1 && self.selectedBook.bookId == 1);
         BOOL atLast = (self.chapterId + 1 > self.selectedBook.numOfChapters && self.selectedBook.bookId == 66);
         NSString *chapterText = [NSString stringWithFormat:@"%li / %i", (long)self.chapterId, self.selectedBook.numOfChapters];
+        BOOL isPad = [UIDeviceHardware isIpad];
 
-        NSMutableArray *leading = [NSMutableArray array];    // left to right
-        NSMutableArray *trailing = [NSMutableArray array];   // right to left
-        if (self.mbBooksItem) {
-            [leading addObject:self.mbBooksItem];
-            [leading addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];   // separate glass groups
-        }
-        [leading addObject:[self mb_glassArrowItemNext:NO dimmed:atFirst]];
-        [leading addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
+        // Width for the title view: the bar minus its side margins, minus room for the iPad's own bar items.
+        UIEdgeInsets safe = self.view.safeAreaInsets;
+        CGFloat barWidth = self.view.bounds.size.width - safe.left - safe.right;
+        CGFloat sideItems = (self.mbBooksItem || self.mbExpandItem) ? 2 * 72.0 : 0;   // kept symmetric: title stays centred
+        CGFloat width = floor(barWidth - 2 * 20.0 - sideItems);
+        if (isPad) width = MIN(width, 560);
+        if (width < 200) width = 200;
 
-        if (self.mbExpandItem) {
-            [trailing addObject:self.mbExpandItem];
-            [trailing addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
-        }
-        [trailing addObject:[self mb_glassArrowItemNext:YES dimmed:atLast]];
+        UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, kMBGlassControlHeight)];
+        container.backgroundColor = [UIColor clearColor];
 
-        if ([UIDeviceHardware isIpad]) {
+        UIButton *previous = [self mb_glassArrowNext:NO dimmed:atFirst];
+        UIButton *next = [self mb_glassArrowNext:YES dimmed:atLast];
+        previous.frame = CGRectMake(0, 0, kMBGlassControlHeight, kMBGlassControlHeight);
+        next.frame = CGRectMake(width - kMBGlassControlHeight, 0, kMBGlassControlHeight, kMBGlassControlHeight);
+        [container addSubview:previous];
+        [container addSubview:next];
+
+        CGFloat innerLeft = CGRectGetMaxX(previous.frame) + kMBGlassControlGap;
+        CGFloat innerRight = CGRectGetMinX(next.frame) - kMBGlassControlGap;
+
+        if (isPad) {
             // As before on iPad: one control with book and chapter, opening the chapter picker.
             NSString *title = [NSString stringWithFormat:@"%@  %@", [self.selectedBook shortName], chapterText];
-            [leading addObject:[self mb_glassSelectorItemWithTitle:title maxWidth:320 action:@selector(handleChapterTap:)]];
+            UIButton *pill = [self mb_glassPillWithTitle:title action:@selector(handleChapterTap:)];
+            CGFloat pillWidth = MIN(innerRight - innerLeft, MAX(88, ceil(pill.intrinsicContentSize.width)));
+            pill.frame = CGRectMake(round((width - pillWidth) / 2.0), 0, pillWidth, kMBGlassControlHeight);
+            [container addSubview:pill];
         } else {
-            [leading addObject:[self mb_glassSelectorItemWithTitle:[self.selectedBook shortName] maxWidth:150 action:@selector(handleBookTap:)]];
-            [trailing addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
-            [trailing addObject:[self mb_glassSelectorItemWithTitle:chapterText maxWidth:110 action:@selector(handleChapterTap:)]];
+            // The counter always gets its full width; the book pill gets the rest and truncates if it has to.
+            UIButton *chapter = [self mb_glassPillWithTitle:chapterText action:@selector(handleChapterTap:)];
+            CGFloat chapterWidth = MAX(88, ceil(chapter.intrinsicContentSize.width));
+            chapter.frame = CGRectMake(innerRight - chapterWidth, 0, chapterWidth, kMBGlassControlHeight);
+            [container addSubview:chapter];
+
+            UIButton *book = [self mb_glassPillWithTitle:[self.selectedBook shortName] action:@selector(handleBookTap:)];
+            CGFloat bookRoom = CGRectGetMinX(chapter.frame) - kMBGlassControlGap - innerLeft;
+            CGFloat bookWidth = MIN(bookRoom, MAX(MIN(88, bookRoom), ceil(book.intrinsicContentSize.width)));
+            book.frame = CGRectMake(innerLeft, 0, MAX(0, bookWidth), kMBGlassControlHeight);
+            [container addSubview:book];
         }
 
-        // An empty title view keeps the centre clear (no plain-text title) without changing the back-button title.
-        self.navigationItem.titleView = [[UIView alloc] initWithFrame:CGRectZero];
-        self.navigationItem.leftItemsSupplementBackButton = YES;
-        self.navigationItem.leftBarButtonItems = leading;
-        self.navigationItem.rightBarButtonItems = trailing;
+        self.navigationItem.titleView = container;
+        self.navigationItem.leftBarButtonItems = self.mbBooksItem ? @[self.mbBooksItem] : nil;
+        self.navigationItem.rightBarButtonItems = self.mbExpandItem ? @[self.mbExpandItem] : nil;
+        self.mbGlassItemsWidth = self.view.bounds.size.width;
     }
 }
 
@@ -2230,6 +2258,10 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     [self layoutBottomToolbar];
     [self mb_layoutSelectionMenu];//+20261117
     [self mb_updateContentInsetsForTopBar];//+20261123 text starts below the glass top bar
+    //+20261123 iOS 26 glass controls: re-size them when the width changes (rotation, iPad multitasking)
+    if ([self usesNativeLiquidGlass] && self.mbGlassItemsWidth > 0 && fabs(self.view.bounds.size.width - self.mbGlassItemsWidth) > 0.5) {
+        [self mb_installGlassNavigationItems];
+    }
 }
 
 
