@@ -17,7 +17,6 @@
 #include "txt2html.h"
 #import "BibleDao.h"
 #import "MBConstants.h"
-#import "VerseCell.h"
 //#import "MalayalamBibleDetailViewController.h"
 #import "MalayalamBibleAppDelegate.h"
 #import "WebViewController.h"

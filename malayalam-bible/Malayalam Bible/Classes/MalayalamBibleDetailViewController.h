@@ -45,8 +45,6 @@
     NSMutableArray *arrayToMookmark;
     UIWebView *webViewVerses;
     
-    UIWebView *versesLeft;
-    UIWebView *versesRight;
     UIView *versesCurrent;
     
     CGPoint mSwipeStart;
@@ -82,8 +80,6 @@
 @property(nonatomic, strong) SearchViewController *searchController;
 @property (strong, nonatomic) UIWebView *webViewVerses;
 
-@property (strong, nonatomic) UIWebView *versesLeft;
-@property (strong, nonatomic) UIWebView *versesRight;
 @property (strong, nonatomic) UIView *versesCurrent;
 
 

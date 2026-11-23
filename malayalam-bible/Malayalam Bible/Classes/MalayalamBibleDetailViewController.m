@@ -11,7 +11,6 @@
 #import "UIToolbarCustom.h"
 #import "BibleDao.h"
 #import "MBConstants.h"
-#import "VerseCell.h"
 #import "MalayalamBibleMasterViewController.h"
 #import "SettingsViewController.h"
 #import "UIDeviceHardware.h"
@@ -206,8 +205,6 @@ typedef enum ScrollDirection {
 @synthesize searchController = _searchController;
 @synthesize arrayToMookmark = _arrayToMookmark;
 @synthesize webViewVerses = _webViewVerses;
-@synthesize versesLeft = _versesLeft;
-@synthesize versesRight = _versesRight;
 @synthesize versesCurrent = _versesCurrent;
 @synthesize isWebViewLoaded;
 @synthesize colordObjs = _colordObjs;

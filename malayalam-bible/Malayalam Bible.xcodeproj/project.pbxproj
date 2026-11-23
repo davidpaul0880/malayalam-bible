@@ -69,7 +69,6 @@
 		03BA84CF15022AAD0089ABCE /* strpair.c in Sources */ = {isa = PBXBuildFile; fileRef = 03BA84C315022AAD0089ABCE /* strpair.c */; };
 		03BA84D015022AAD0089ABCE /* strstruct.c in Sources */ = {isa = PBXBuildFile; fileRef = 03BA84C515022AAD0089ABCE /* strstruct.c */; };
 		03BA84D115022AAD0089ABCE /* txt2html.c in Sources */ = {isa = PBXBuildFile; fileRef = 03BA84C715022AAD0089ABCE /* txt2html.c */; };
-		03D1255915060FE70054CB0A /* VerseCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 03D1255815060FE70054CB0A /* VerseCell.m */; };
 		03D3FFE414BFF40A004A8BE8 /* BibleDao.m in Sources */ = {isa = PBXBuildFile; fileRef = 03D3FFE314BFF40A004A8BE8 /* BibleDao.m */; };
 		03D3FFE914C02D8E004A8BE8 /* Settings.png in Resources */ = {isa = PBXBuildFile; fileRef = 03D3FFE814C02D8E004A8BE8 /* Settings.png */; };
 		03D3FFEC14C030BE004A8BE8 /* SettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 03D3FFEB14C030BE004A8BE8 /* SettingsViewController.m */; };
@@ -945,7 +944,6 @@
 				03BA84CF15022AAD0089ABCE /* strpair.c in Sources */,
 				03BA84D015022AAD0089ABCE /* strstruct.c in Sources */,
 				03BA84D115022AAD0089ABCE /* txt2html.c in Sources */,
-				03D1255915060FE70054CB0A /* VerseCell.m in Sources */,
 				035C1FB9151B2D2200491FB1 /* WebViewController.m in Sources */,
 				03E0484315419CDC008DDB41 /* UIDeviceHardware.m in Sources */,
 				03F3856815F5DC60004CB237 /* Information.m in Sources */,

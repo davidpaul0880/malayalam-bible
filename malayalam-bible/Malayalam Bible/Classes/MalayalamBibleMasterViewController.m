@@ -15,7 +15,6 @@
 #import "SettingsViewController.h"
 //#import "SearchViewController.h"
 #import "MBConstants.h"
-#import "VerseCell.h"
 #import "WebViewController.h"
 #import "UIDeviceHardware.h"
 
