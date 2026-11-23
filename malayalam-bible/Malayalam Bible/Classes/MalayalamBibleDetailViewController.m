@@ -116,6 +116,16 @@ __VA_ARGS__ \
 - (void) mb_setFloatingBarMinimized:(BOOL)minimized animated:(BOOL)animated;
 - (void) mb_trackScrollForFloatingBar:(UIScrollView *)scrollView;
 - (void)mb_applyNavigationBarAppearanceDark:(BOOL)isDark;
+- (void)mb_updateContentInsetsForTopBar;            //+20261123 glass top bar
+- (CGFloat)mb_topBarCoverForScrollView:(UIScrollView *)scrollView;
+- (void)mb_moveScrolledVerseBelowTopBar;
+- (void)mb_settleTextBelowTopBarIfAtTop;
+//+20261123 iOS 26 Liquid Glass navigation controls (native bar button items instead of the custom title view)
+@property (strong, nonatomic) UIBarButtonItem *mbExpandItem;   // iPad full-width / split toggle
+@property (strong, nonatomic) UIBarButtonItem *mbBooksItem;    // iPad split-view "Books" button
+- (void)mb_installGlassNavigationItems;
+- (void)mb_setExpandBarButtonItem:(UIBarButtonItem *)item;
+- (void)mb_setBooksBarButtonItem:(UIBarButtonItem *)item animated:(BOOL)animated;
 - (void)mb_applyTransparentToolbarAppearance;
 
 //+20261117 floating glass selection action menu
@@ -544,7 +554,11 @@ typedef enum ScrollDirection {
         
         [alltitleView setFrame:CGRectMake(0, 0, totWidth, 45)];
         
-        self.navigationItem.titleView = alltitleView;
+        if ([self usesNativeLiquidGlass]) {
+            [self mb_installGlassNavigationItems];//+20261123 iOS 26: native Liquid Glass controls
+        } else {
+            self.navigationItem.titleView = alltitleView;
+        }
         
         // save off this level's selection to our AppDelegate
         MalayalamBibleAppDelegate *appDelegate = (MalayalamBibleAppDelegate *)[[UIApplication sharedApplication] delegate];
@@ -925,14 +939,14 @@ typedef enum ScrollDirection {
 - (void)splitViewController:(UISplitViewController *)splitController willHideViewController:(UIViewController *)viewController withBarButtonItem:(UIBarButtonItem *)barButtonItem forPopoverController:(UIPopoverController *)popoverController
 {
     barButtonItem.title = [BibleDao getTitleBooks];
-    [self.navigationItem setLeftBarButtonItem:barButtonItem animated:YES];
+    [self mb_setBooksBarButtonItem:barButtonItem animated:YES];//+20261123
     self.masterPopoverController = popoverController;
 }
 
 - (void)splitViewController:(UISplitViewController *)splitController willShowViewController:(UIViewController *)viewController invalidatingBarButtonItem:(UIBarButtonItem *)barButtonItem
 {
     // Called when the view is shown again in the split view, invalidating the button and popover controller.
-    [self.navigationItem setLeftBarButtonItem:nil animated:YES];
+    [self mb_setBooksBarButtonItem:nil animated:YES];//+20261123
     self.masterPopoverController = nil;
 }
 
@@ -1326,7 +1340,7 @@ typedef enum ScrollDirection {
             
             UIBarButtonItem* expand = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_full.png"] landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:self action:@selector(expand:)];
             
-            self.navigationItem.rightBarButtonItem = expand;
+            [self mb_setExpandBarButtonItem:expand];//+20261123
         }
         
         
@@ -1408,6 +1422,10 @@ typedef enum ScrollDirection {
 {
     [super viewWillDisappear:animated];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kStatusBarTappedNotification object:nil];
+    //+20261123 Pushed screens style the shared bar themselves; do not leave this screen's Night/Light style on it.
+    if (self.navigationController.topViewController != self) {
+        self.navigationController.navigationBar.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+    }
     //+20261117 Navigating away (push or pop) ends a verse selection and restores the floating toolbar.
     // Sheets presented over this screen (book/chapter pickers, Bookmark, Share) keep the existing behaviour.
     if (self.arrayToMookmark.count > 0 && (self.navigationController.topViewController != self || self.isMovingFromParentViewController)) {
@@ -1429,7 +1447,7 @@ typedef enum ScrollDirection {
             
             UIBarButtonItem* expand = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_full.png"] landscapeImagePhone:[UIImage imageNamed:@"fullscreen.png"] style:UIBarButtonItemStylePlain target:self action:@selector(expand:)];
             
-            self.navigationItem.rightBarButtonItem = expand;
+            [self mb_setExpandBarButtonItem:expand];//+20261123
             
         }else{
             
@@ -1438,7 +1456,7 @@ typedef enum ScrollDirection {
             [appDelegate showMasterController];
 
             
-            self.navigationItem.rightBarButtonItem = nil;
+            [self mb_setExpandBarButtonItem:nil];//+20261123
         }
     }
     
@@ -1586,8 +1604,9 @@ typedef enum ScrollDirection {
     
     
     
-    if (isos7) self.navigationController.navigationBar.barTintColor = changedColor;
-    self.navigationController.navigationBar.translucent = NO;
+    //+20261123 Glass top bar: no opaque bar tint, and the bar stays translucent (see mb_applyNavigationBarAppearanceDark:).
+    self.navigationController.navigationBar.barTintColor = nil;
+    self.navigationController.navigationBar.translucent = YES;
     self.webViewVerses.scrollView.backgroundColor = changedColor;
     
     
@@ -1781,17 +1800,32 @@ static const CGFloat kGlassShowThreshold = 12.0;
 // another screen later changes the shared bar) and on the navigation bar itself.
 - (void)mb_applyNavigationBarAppearanceDark:(BOOL)isDark {
     if (@available(iOS 15.0, *)) {
+        //+20261123 Glass top bar: the system's own translucent bar background instead of an opaque one, so the
+        // verses scroll underneath it and show through. On iOS 26 this is the native Liquid Glass bar; on
+        // iOS 15.6-18 it is the system chrome blur material. No extra views are added. The bar takes the
+        // app's Night / Light style, so the material, title and controls match the app rather than iOS.
+        UIUserInterfaceStyle style = isDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+        UIColor *titleColor = isDark ? [UIColor whiteColor] : [UIColor blackColor];
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-        if (isDark) {
-            [appearance configureWithOpaqueBackground];
-            appearance.backgroundColor = [UIColor blackColor];
-            appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
-            appearance.largeTitleTextAttributes = @{NSForegroundColorAttributeName: [UIColor whiteColor]};
-            appearance.shadowColor = [UIColor colorWithWhite:0.25 alpha:1.0];
+        [appearance configureWithDefaultBackground];
+        if (@available(iOS 26.0, *)) {
+            // Keep the native glass material.
         } else {
-            [appearance configureWithDefaultBackground];
+            appearance.backgroundEffect = [UIBlurEffect effectWithStyle:(isDark ? UIBlurEffectStyleSystemChromeMaterialDark : UIBlurEffectStyleSystemChromeMaterialLight)];
+        }
+        appearance.titleTextAttributes = @{NSForegroundColorAttributeName: titleColor};
+        appearance.largeTitleTextAttributes = @{NSForegroundColorAttributeName: titleColor};
+        appearance.shadowColor = isDark ? [UIColor colorWithWhite:1.0 alpha:0.12] : [UIColor colorWithWhite:0.0 alpha:0.12];
+        if (@available(iOS 26.0, *)) {
+            //+20261123 iOS 26 Liquid Glass: no separator line (native iOS 26 bars draw none), and the Bible text is
+            // the content the bar's soft glass edge blurs - not the verse index table, which UIKit could pick instead.
+            appearance.shadowColor = [UIColor clearColor];
+            if (self.webViewVerses.scrollView != nil) {
+                [self setContentScrollView:self.webViewVerses.scrollView forEdge:NSDirectionalRectEdgeTop];
+            }
         }
 
+        // Same appearance at the top of the text and while scrolling, so the glass never switches to opaque.
         UINavigationItem *item = self.navigationItem;
         item.standardAppearance = appearance;
         item.scrollEdgeAppearance = appearance;
@@ -1800,11 +1834,15 @@ static const CGFloat kGlassShowThreshold = 12.0;
 
         UINavigationBar *bar = self.navigationController.navigationBar;
         MBLog(@"mb_applyNavigationBarAppearanceDark:%d navigationController=%@", isDark, self.navigationController);
+        [self mb_installGlassNavigationItems];//+20261123 iOS 26 controls follow the current theme colour
         if (bar != nil) {
             bar.standardAppearance = appearance;
             bar.scrollEdgeAppearance = appearance;
             bar.compactAppearance = appearance;
             bar.compactScrollEdgeAppearance = appearance;
+            bar.barTintColor = nil;          // a legacy tint would make the bar opaque again
+            bar.translucent = YES;           // other screens set NO on this shared bar; restore it here
+            bar.overrideUserInterfaceStyle = style;
         }
     }
 }
@@ -1999,11 +2037,191 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     MBSetBottomContentInset(self.tableViewVerses, tableInset);
 }
 
+#pragma mark iOS 26 Liquid Glass navigation controls (+20261123)
+//
+// iOS 26 with native Liquid Glass only (usesNativeLiquidGlass). The custom title view of older iOS is replaced by
+// standard bar button items, which the system draws on its own glass:
+//   iPhone: [<] [Book v]  ...  [3 / 50 v] [>]
+//   iPad:   [Books] [<] [Book  3 / 50 v]  ...  [expand] [>]
+// Every control calls the same method as before: book -> handleBookTap:, chapter -> handleChapterTap:,
+// arrows -> moveToNext:. As before, the arrows stay tappable at the first / last chapter (moveToNext: shows its
+// bounce) and are only dimmed. iOS 15.6-18 keep the original title view and never reach this code.
+
+- (UIBarButtonItem *)mb_glassSelectorItemWithTitle:(NSString *)title maxWidth:(CGFloat)maxWidth action:(SEL)action API_AVAILABLE(ios(26.0)) {
+
+    UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
+    config.attributedTitle = [[NSAttributedString alloc] initWithString:(title ?: @"")
+                                                             attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold]}];
+    config.titleLineBreakMode = NSLineBreakByTruncatingTail;
+    config.baseForegroundColor = [UIColor labelColor];
+    UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightBold];
+    config.image = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbol] imageWithTintColor:[UIColor defaultWindowColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+    config.imagePlacement = NSDirectionalRectEdgeTrailing;
+    config.imagePadding = 5;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(0, 14, 0, 12);
+
+    UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    [button.widthAnchor constraintLessThanOrEqualToConstant:maxWidth].active = YES;
+    [button.heightAnchor constraintEqualToConstant:44].active = YES;
+    button.accessibilityLabel = title;
+
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:button];
+    item.hidesSharedBackground = YES;   // the button is already native glass: no glass behind glass
+    return item;
+}
+
+- (UIBarButtonItem *)mb_glassArrowItemNext:(BOOL)isNext dimmed:(BOOL)dimmed API_AVAILABLE(ios(26.0)) {
+
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:(isNext ? @"chevron.right" : @"chevron.left")]
+                                                             style:UIBarButtonItemStylePlain
+                                                            target:self
+                                                            action:(isNext ? @selector(mb_glassNextTapped:) : @selector(mb_glassPreviousTapped:))];
+    UIColor *theme = [UIColor defaultWindowColor];
+    item.tintColor = dimmed ? [theme colorWithAlphaComponent:0.3] : theme;
+    item.accessibilityLabel = isNext ? @"Next chapter" : @"Previous chapter";
+    return item;
+}
+
+- (void)mb_glassPreviousTapped:(id)sender {
+    [self moveToNext:NO];
+}
+
+- (void)mb_glassNextTapped:(id)sender {
+    [self moveToNext:YES];
+}
+
+- (void)mb_installGlassNavigationItems {
+
+    if (![self usesNativeLiquidGlass] || self.selectedBook == nil) return;
+    if (@available(iOS 26.0, *)) {
+        BOOL atFirst = (self.chapterId - 1 < 1 && self.selectedBook.bookId == 1);
+        BOOL atLast = (self.chapterId + 1 > self.selectedBook.numOfChapters && self.selectedBook.bookId == 66);
+        NSString *chapterText = [NSString stringWithFormat:@"%li / %i", (long)self.chapterId, self.selectedBook.numOfChapters];
+
+        NSMutableArray *leading = [NSMutableArray array];    // left to right
+        NSMutableArray *trailing = [NSMutableArray array];   // right to left
+        if (self.mbBooksItem) {
+            [leading addObject:self.mbBooksItem];
+            [leading addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];   // separate glass groups
+        }
+        [leading addObject:[self mb_glassArrowItemNext:NO dimmed:atFirst]];
+        [leading addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
+
+        if (self.mbExpandItem) {
+            [trailing addObject:self.mbExpandItem];
+            [trailing addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
+        }
+        [trailing addObject:[self mb_glassArrowItemNext:YES dimmed:atLast]];
+
+        if ([UIDeviceHardware isIpad]) {
+            // As before on iPad: one control with book and chapter, opening the chapter picker.
+            NSString *title = [NSString stringWithFormat:@"%@  %@", [self.selectedBook shortName], chapterText];
+            [leading addObject:[self mb_glassSelectorItemWithTitle:title maxWidth:320 action:@selector(handleChapterTap:)]];
+        } else {
+            [leading addObject:[self mb_glassSelectorItemWithTitle:[self.selectedBook shortName] maxWidth:150 action:@selector(handleBookTap:)]];
+            [trailing addObject:[UIBarButtonItem fixedSpaceItemOfWidth:0]];
+            [trailing addObject:[self mb_glassSelectorItemWithTitle:chapterText maxWidth:110 action:@selector(handleChapterTap:)]];
+        }
+
+        // An empty title view keeps the centre clear (no plain-text title) without changing the back-button title.
+        self.navigationItem.titleView = [[UIView alloc] initWithFrame:CGRectZero];
+        self.navigationItem.leftItemsSupplementBackButton = YES;
+        self.navigationItem.leftBarButtonItems = leading;
+        self.navigationItem.rightBarButtonItems = trailing;
+    }
+}
+
+// iPad expand / collapse button: on iOS 26 it joins the glass controls; older iOS sets it exactly as before.
+- (void)mb_setExpandBarButtonItem:(UIBarButtonItem *)item {
+
+    self.mbExpandItem = item;
+    if ([self usesNativeLiquidGlass]) {
+        [self mb_installGlassNavigationItems];
+    } else {
+        self.navigationItem.rightBarButtonItem = item;
+    }
+}
+
+// iPad split-view Books button: same as above.
+- (void)mb_setBooksBarButtonItem:(UIBarButtonItem *)item animated:(BOOL)animated {
+
+    self.mbBooksItem = item;
+    if ([self usesNativeLiquidGlass]) {
+        [self mb_installGlassNavigationItems];
+    } else {
+        [self.navigationItem setLeftBarButtonItem:item animated:animated];
+    }
+}
+
+#pragma mark Glass top bar (+20261123)
+//
+// The text (web view) and the verse index scroll underneath the translucent top bar. Each gets exactly enough top
+// inset to start below it, on top of whatever inset the system already applies, so nothing sits under the bar at
+// rest. It follows the bar: smaller in full-screen mode (bar hidden), recalculated on every layout.
+
+- (CGFloat)mb_topBarCoverForScrollView:(UIScrollView *)scrollView {
+
+    if (scrollView == nil || scrollView.superview == nil) return 0;
+    CGRect frameInView = [scrollView.superview convertRect:scrollView.frame toView:self.view];
+    return MAX(0, self.view.safeAreaInsets.top - CGRectGetMinY(frameInView));
+}
+
+- (void)mb_updateContentInsetsForTopBar {
+
+    NSMutableArray *scrollViews = [NSMutableArray array];
+    if (self.webViewVerses.scrollView) [scrollViews addObject:self.webViewVerses.scrollView];
+    if (self.tableViewVerses) [scrollViews addObject:self.tableViewVerses];
+
+    for (UIScrollView *scrollView in scrollViews) {
+        CGFloat cover = [self mb_topBarCoverForScrollView:scrollView];
+        CGFloat systemTop = scrollView.adjustedContentInset.top - scrollView.contentInset.top;
+        CGFloat extra = MAX(0, cover - systemTop);
+        UIEdgeInsets inset = scrollView.contentInset;
+        if (fabs(inset.top - extra) < 0.5) continue;
+
+        BOOL wasAtTop = (scrollView.contentOffset.y <= -scrollView.adjustedContentInset.top + 1.0);
+        inset.top = extra;
+        scrollView.contentInset = inset;
+        UIEdgeInsets indicators = scrollView.verticalScrollIndicatorInsets;
+        indicators.top = extra;
+        scrollView.verticalScrollIndicatorInsets = indicators;
+        if (wasAtTop) {
+            [scrollView setContentOffset:CGPointMake(scrollView.contentOffset.x, -scrollView.adjustedContentInset.top) animated:NO];
+        }
+    }
+}
+
+// scrollToDivId (BibleDao's JavaScript) scrolls the verse to the very top of the web view, which is now under the
+// glass bar: move it down by the bar's height, never past the real top.
+- (void)mb_moveScrolledVerseBelowTopBar {
+
+    UIScrollView *scrollView = self.webViewVerses.scrollView;
+    if (scrollView == nil) return;
+    CGFloat top = scrollView.adjustedContentInset.top;
+    if (top <= 0) return;
+    CGFloat y = MAX(-top, scrollView.contentOffset.y - top);
+    [scrollView setContentOffset:CGPointMake(scrollView.contentOffset.x, y) animated:NO];
+}
+
+// A freshly loaded chapter sits at offset 0, i.e. with its first lines under the bar: rest it at the real top.
+- (void)mb_settleTextBelowTopBarIfAtTop {
+
+    UIScrollView *scrollView = self.webViewVerses.scrollView;
+    if (scrollView == nil) return;
+    CGFloat top = scrollView.adjustedContentInset.top;
+    if (top > 0 && scrollView.contentOffset.y > -top && scrollView.contentOffset.y <= 0.5) {
+        [scrollView setContentOffset:CGPointMake(scrollView.contentOffset.x, -top) animated:NO];
+    }
+}
+
 - (void)viewDidLayoutSubviews{
 
     [super viewDidLayoutSubviews];
     [self layoutBottomToolbar];
     [self mb_layoutSelectionMenu];//+20261117
+    [self mb_updateContentInsetsForTopBar];//+20261123 text starts below the glass top bar
 }
 
 
@@ -2985,7 +3203,9 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     [appDelegate.savedLocation replaceObjectAtIndex:2 withObject:[NSMutableDictionary dictionary]];
     
     [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
-    
+    //+20261123 window.scrollTo(0,0) ignores the top inset; rest at the real top, with the first verse below the bar.
+    UIScrollView *verseScroll = self.webViewVerses.scrollView;
+    [verseScroll setContentOffset:CGPointMake(verseScroll.contentOffset.x, -verseScroll.adjustedContentInset.top) animated:NO];
     
 }
 - (void) scrollToVerseId{
@@ -3383,7 +3603,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     //+20140929
     UIBarButtonItem* collapse = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_small.png"] landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:self action:@selector(resize:)];
     
-    self.navigationItem.rightBarButtonItem = collapse;
+    [self mb_setExpandBarButtonItem:collapse];//+20261123
 }
 - (void) resize:(id)sender{
     
@@ -3393,7 +3613,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     //+20140929
     UIBarButtonItem* expand = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"resize_full.png"] landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:self action:@selector(expand:)];
     
-    self.navigationItem.rightBarButtonItem = expand;
+    [self mb_setExpandBarButtonItem:expand];//+20261123
 }
 
 - (void) openNotes{
@@ -4605,6 +4825,8 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     //self.isJSWebViewLoaded = YES;
     //self.isLoaded = NO;
     MBLog(@"set no");
+    [self mb_updateContentInsetsForTopBar];//+20261123
+    [self mb_settleTextBelowTopBarIfAtTop];//+20261123 a new chapter starts below the glass bar
     [self scrollToVerseId];
     [self loadSelections];
     MBLog(@"set yes");
@@ -4655,6 +4877,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 }
 - (void) endscroll:(NSString *)row{
     
+    [self mb_moveScrolledVerseBelowTopBar];//+20261123 scrollToDivId put the verse at the very top, under the glass bar
     MBLog(@"set yes");
     self.isLoaded = YES;
     
