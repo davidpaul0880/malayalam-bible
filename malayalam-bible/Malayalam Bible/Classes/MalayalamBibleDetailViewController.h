@@ -7,6 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>//+20261123 Phase 3b reading screen WKWebView
 
 #import "Book.h"
 #import "PopOverDelegate.h"
@@ -20,7 +21,7 @@
 
 @class TintedImageView;
 
-@interface MalayalamBibleDetailViewController : UIViewController <UISplitViewControllerDelegate, PopOverDelegate, MFMailComposeViewControllerDelegate, UITabBarDelegate, UITableViewDataSource, UITableViewDelegate, MBProtocol, UIWebViewDelegate, UIScrollViewDelegate, ButtonClickDelegate, MFMessageComposeViewControllerDelegate, FPPopoverControllerDelegate, UIPopoverControllerDelegate, UIGestureRecognizerDelegate>//+20130905
+@interface MalayalamBibleDetailViewController : UIViewController <UISplitViewControllerDelegate, PopOverDelegate, MFMailComposeViewControllerDelegate, UITabBarDelegate, UITableViewDataSource, UITableViewDelegate, MBProtocol, WKNavigationDelegate, WKScriptMessageHandler, UIScrollViewDelegate, ButtonClickDelegate, MFMessageComposeViewControllerDelegate, FPPopoverControllerDelegate, UIPopoverControllerDelegate, UIGestureRecognizerDelegate>//+20130905
 {
     NSMutableArray *bVerses;
     
@@ -43,7 +44,7 @@
     BOOL isWebViewLoaded;
     
     NSMutableArray *arrayToMookmark;
-    UIWebView *webViewVerses;
+    WKWebView *webViewVerses;//+20261123 Phase 3b (was UIWebView)
     
     UIView *versesCurrent;
     
@@ -78,7 +79,7 @@
 @property(nonatomic, assign) BOOL isWebViewLoaded;
 
 @property(nonatomic, strong) SearchViewController *searchController;
-@property (strong, nonatomic) UIWebView *webViewVerses;
+@property (strong, nonatomic) WKWebView *webViewVerses;//+20261123 Phase 3b (was UIWebView)
 
 @property (strong, nonatomic) UIView *versesCurrent;
 

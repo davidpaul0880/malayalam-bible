@@ -162,6 +162,18 @@ __VA_ARGS__ \
 - (void) mb_handleSelectionOutsideTap:(UITapGestureRecognizer *)recognizer;
 - (void) clearSelections;
 
+//+20261123 Phase 3b reading screen WKWebView
+@property (nonatomic, strong) WKNavigation *mbCurrentNavigation;       // the chapter load in flight (stale didFinish/didFail are ignored)
+@property (nonatomic, assign) NSUInteger mbNavigationGeneration;       // bumped on every chapter load and process recovery
+@property (nonatomic, assign) NSUInteger mbScrollRequestGeneration;    // bumped on every verse-position request or cancel
+@property (nonatomic, assign) BOOL mbVerseScrollInFlight;
+@property (nonatomic, assign) NSUInteger mbSelectionGeneration;        // bumped on every selection change
+@property (nonatomic, assign) CFAbsoluteTime mbLastProcessRecoveryTime;
+- (void) mb_loadChapterHTML:(NSString *)html;
+- (void) mb_scrollToVerseElement:(NSString *)elementId;
+- (void) mb_cancelPendingVerseScroll;
+- (void) mb_dispatchBridgeType:(NSString *)type value:(NSString *)value;
+
 @end
 
 typedef enum ScrollDirection {
@@ -182,6 +194,30 @@ typedef enum ScrollDirection {
 @implementation MBSelectionOutsideTapDelegate
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
     return YES;
+}
+@end
+
+//+20261123 Phase 3b: WKUserContentController retains its script message handlers. This proxy holds the
+// view controller weakly, so the web view's configuration never keeps the controller alive.
+static NSString * const kMBScriptMessageHandlerName = @"mb";
+
+@interface MBWeakScriptMessageHandler : NSObject <WKScriptMessageHandler>
+@property (nonatomic, weak) id<WKScriptMessageHandler> target;
+- (instancetype)initWithTarget:(id<WKScriptMessageHandler>)target;
+@end
+
+@implementation MBWeakScriptMessageHandler
+- (instancetype)initWithTarget:(id<WKScriptMessageHandler>)target{
+    self = [super init];
+    if (self) {
+        _target = target;
+    }
+    return self;
+}
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message{
+    id<WKScriptMessageHandler> target = self.target;
+    if (target == nil) return;
+    [target userContentController:userContentController didReceiveScriptMessage:message];
 }
 @end
 
@@ -583,7 +619,7 @@ typedef enum ScrollDirection {
         //(@"fullverse = %@", fullverse);
         
         self.isWebViewLoaded = NO;
-        [self.webViewVerses loadHTMLString:fullverse  baseURL:[MBUtils getBaseURL]];
+        [self mb_loadChapterHTML:fullverse];//+20261123 Phase 3b (was loadHTMLString:baseURL:[MBUtils getBaseURL])
         
         
         
@@ -1031,13 +1067,7 @@ typedef enum ScrollDirection {
     
     NSString *divid = [NSString stringWithFormat:@"Verse-%@",[dict valueForKey:@"verseid"]];
     
-    NSMutableString *command = [NSMutableString stringWithFormat:@"scrollToDivId('%@", divid];
-    
-    [command appendString:@"')"];
-    
-    //(@"command = %@", command);
-    
-    [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+    [self mb_scrollToVerseElement:divid];//+20261123 Phase 3b native positioning (was scrollToDivId JS); sets isLoaded when done
     
     MBLog(@"scrolled");
     
@@ -1152,48 +1182,24 @@ typedef enum ScrollDirection {
     
     
     //CGRect rect = self.view.frame;
-    self.webViewVerses = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width-tableWidth, self.view.frame.size.height)];//+20261123 no empty 45 pt strip at the bottom
-    
-    
-    
-    if([UIDeviceHardware isOS5Device]){
-        
-        UIScrollView *zview = self.webViewVerses.scrollView;
-        [zview setShowsVerticalScrollIndicator:NO];
-        zview.delegate = self;//+20131111
-        for (UIView* shadowView in [zview subviews])
-        {
-            if ([shadowView isKindOfClass:[UIImageView class]]) {
-                [shadowView setHidden:YES];
-                
-            }
-        }
-        
-        
-    }else{
-        
-        for (UIView* subView in [self.webViewVerses subviews])
-        {
-            if ([subView isKindOfClass:[UIScrollView class]]) {
-                
-                //[(UIScrollView*)[webview.subviews objectAtIndex:0] setShowsHorizontalScrollIndicator:NO];
-                UIScrollView *sView = (UIScrollView *)subView;
-                [sView setShowsVerticalScrollIndicator:NO];
-                
-                for (UIView* shadowView in [subView subviews])
-                {
-                    if ([shadowView isKindOfClass:[UIImageView class]]) {
-                        [shadowView setHidden:YES];
-                    }
-                }
-                break;
-            }
-        }
-    }
+    //+20261123 Phase 3b: WKWebView reading view (was UIWebView). JavaScript stays on (the page's own functions);
+    // page → app messages arrive through the "mb" script message handler (weak proxy, removed in dealloc).
+    WKWebViewConfiguration *webConfiguration = [[WKWebViewConfiguration alloc] init];
+    WKUserContentController *userContent = [[WKUserContentController alloc] init];
+    [userContent addScriptMessageHandler:[[MBWeakScriptMessageHandler alloc] initWithTarget:self] name:kMBScriptMessageHandlerName];
+    webConfiguration.userContentController = userContent;
+    webConfiguration.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
+    webConfiguration.dataDetectorTypes = WKDataDetectorTypeNone;
+    self.webViewVerses = [[WKWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width-tableWidth, self.view.frame.size.height) configuration:webConfiguration];//+20261123 no empty 45 pt strip at the bottom
+
+    UIScrollView *zview = self.webViewVerses.scrollView;
+    [zview setShowsVerticalScrollIndicator:NO];
+    zview.delegate = self;//+20131111
+    self.webViewVerses.allowsLinkPreview = NO;
     
     self.webViewVerses.opaque = false;
     
-    self.webViewVerses.delegate = self;
+    self.webViewVerses.navigationDelegate = self;
     self.webViewVerses.autoresizingMask = UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleWidth;
     
     //self.webViewVerses.scalesPageToFit = YES;
@@ -1298,6 +1304,7 @@ typedef enum ScrollDirection {
     }else {
         self.webViewVerses.backgroundColor = [UIColor whiteColor];
     }
+    self.webViewVerses.underPageBackgroundColor = self.webViewVerses.backgroundColor;//+20261123 Phase 3b
     
     
     //+20140617
@@ -1386,7 +1393,7 @@ typedef enum ScrollDirection {
 
 - (void)viewDidUnload{
     
-    self.webViewVerses.delegate = nil;
+    self.webViewVerses.navigationDelegate = nil;//+20261123 Phase 3b (was delegate)
     [self.timerScroll invalidate];
     [super viewDidUnload];
 }
@@ -1515,10 +1522,8 @@ typedef enum ScrollDirection {
     self.tableViewVerses.frame = frmet;
     [self.tableViewVerses setNeedsLayout];
     
-    [self.webViewVerses stringByEvaluatingJavaScriptFromString:
-     [NSString stringWithFormat:
-      @"document.querySelector('meta[name=viewport]').setAttribute('content', 'width=%d;', false); ",
-      (int)self.webViewVerses.frame.size.width]];
+    //+20261123 Phase 3b: the viewport rewrite was removed. The page's own width=device-width viewport (BibleDao)
+    // follows the WKWebView's width; rewriting it here would replace that viewport.
 
 }
 
@@ -1576,6 +1581,7 @@ typedef enum ScrollDirection {
     }
     
     self.webViewVerses.backgroundColor = changedColor;
+    self.webViewVerses.underPageBackgroundColor = changedColor;//+20261123 Phase 3b
     
     if (isos7) [[UIToolbar appearance] setBarTintColor:changedColor];
     
@@ -2846,6 +2852,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 // verses, so the selection is dropped without running any JavaScript on them.
 - (void) mb_discardSelectionForReload{
 
+    self.mbSelectionGeneration++;//+20261123 Phase 3b stale async guard
     if (self.arrayToMookmark.count == 0 && !self.isSelectionMenuVisible) return;
     [[self.view viewWithTag:kTagShareToolbar] removeFromSuperview];
     [self.arrayToMookmark removeAllObjects];
@@ -2927,16 +2934,27 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     UIScrollView *scrollView = self.webViewVerses.scrollView;
     CGPoint pointInContent = [recognizer locationInView:scrollView];
     CGFloat zoom = scrollView.zoomScale > 0 ? scrollView.zoomScale : 1.0;
-    NSString *script = [NSString stringWithFormat:
-                        @"(function(x,y){var e=document.elementFromPoint(x-window.pageXOffset,y-window.pageYOffset);"
-                        @"if(!e){return 'none';}"
-                        @"while(e){if(e.tagName==='A'){return 'verse';}if(e.id&&e.id.indexOf('Font-')===0){return 'verse';}e=e.parentElement;}"
-                        @"return 'outside';})(%d,%d)",
-                        (int)round(pointInContent.x / zoom), (int)round(pointInContent.y / zoom)];
-    NSString *hit = [self.webViewVerses stringByEvaluatingJavaScriptFromString:script];
-    if (![hit isEqualToString:@"outside"]) return;
+    //+20261123 Phase 3b: the hit test is asynchronous. Its answer only counts if nothing changed meanwhile
+    // (same page, same selection, menu still up, nothing presented); anything uncertain still does not clear.
+    NSString *script = @"var e=document.elementFromPoint(x-window.pageXOffset,y-window.pageYOffset);"
+                       @"if(!e){return 'none';}"
+                       @"while(e){if(e.tagName==='A'){return 'verse';}if(e.id&&e.id.indexOf('Font-')===0){return 'verse';}e=e.parentElement;}"
+                       @"return 'outside';";
+    NSDictionary *arguments = @{@"x": @((int)round(pointInContent.x / zoom)), @"y": @((int)round(pointInContent.y / zoom))};
+    NSUInteger navigationGeneration = self.mbNavigationGeneration;
+    NSUInteger selectionGeneration = self.mbSelectionGeneration;
+    __weak MalayalamBibleDetailViewController *weakSelf = self;
+    [self.webViewVerses callAsyncJavaScript:script arguments:arguments inFrame:nil inContentWorld:WKContentWorld.pageWorld completionHandler:^(id result, NSError *error) {
+        MalayalamBibleDetailViewController *strongSelf = weakSelf;
+        if (strongSelf == nil || error != nil) return;
+        if (![result isKindOfClass:[NSString class]] || ![result isEqualToString:@"outside"]) return;
+        if (strongSelf.mbNavigationGeneration != navigationGeneration || strongSelf.mbSelectionGeneration != selectionGeneration) return;
+        if (!strongSelf.isWebViewLoaded) return;
+        if (!strongSelf.isSelectionMenuVisible || strongSelf.isSelectionSharePresented || strongSelf.arrayToMookmark.count == 0) return;
+        if (strongSelf.presentedViewController != nil) return;
 
-    [self clearSelections];
+        [strongSelf clearSelections];
+    }];
 }
 
 
@@ -3075,7 +3093,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
                 
                 MBLog(@"command = %@",command);
                 
-                [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+                [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
             }
             
             
@@ -3108,7 +3126,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         MBLog(@"command = %@",command);
         
-        [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+        [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
         
     }
     
@@ -3372,14 +3390,12 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 - (void) scrollToTop:(UITapGestureRecognizer *)recognizer{
     
     MalayalamBibleAppDelegate *appDelegate = (MalayalamBibleAppDelegate *)[[UIApplication sharedApplication] delegate];
-    NSString *command = @"scrollToTop()";
-    
-    MBLog(@"command = %@", command);
+    MBLog(@"scrollToTop");
     
     [appDelegate.savedLocation replaceObjectAtIndex:2 withObject:[NSMutableDictionary dictionary]];
     
-    [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
-    //+20261123 window.scrollTo(0,0) ignores the top inset; rest at the real top, with the first verse below the bar.
+    //+20261123 Phase 3b: native only (the scrollToTop() JS call was removed); rest at the real top, first verse below the bar.
+    [self mb_cancelPendingVerseScroll];
     UIScrollView *verseScroll = self.webViewVerses.scrollView;
     [verseScroll setContentOffset:CGPointMake(verseScroll.contentOffset.x, -verseScroll.adjustedContentInset.top) animated:NO];
     
@@ -3397,15 +3413,11 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         NSString *divid = [NSString stringWithFormat:@"Verse-%@",verseid];
         
-        NSMutableString *command = [NSMutableString stringWithFormat:@"scrollToDivId('%@", divid];
-        
-        [command appendString:@"')"];
-        
-        MBLog(@"command = %@", command);
+        MBLog(@"scroll to %@", divid);
         
         [appDelegate.savedLocation replaceObjectAtIndex:2 withObject:[NSMutableDictionary dictionary]];
         
-        [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+        [self mb_scrollToVerseElement:divid];//+20261123 Phase 3b native positioning (was scrollToDivId JS); sets isLoaded when done
         
     }else if(sPos){
         
@@ -3687,7 +3699,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         MBLog(@"command = %@",command);
         
-        [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+        [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
     }
     
     
@@ -3723,7 +3735,10 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 -(void)autoScroll
 {
     
-    CGFloat yOffset = [[[self webViewVerses] stringByEvaluatingJavaScriptFromString:@"pageYOffset"] floatValue];
+    //+20261123 Phase 3b: native scrolling (was pageYOffset / window.scrollTo JS). Clamped at the bottom so the
+    // offset stops changing there, which ends auto-scroll exactly as before.
+    UIScrollView *autoScrollView = self.webViewVerses.scrollView;
+    CGFloat yOffset = autoScrollView.contentOffset.y;
     if(self.yoffsetPrevious == yOffset){
         
         MBLog(@"yOffset = %f", yOffset);
@@ -3733,17 +3748,10 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         self.yoffsetPrevious = yOffset;
         
-        if(yOffset >= self.webViewVerses.scrollView.contentSize.height)
-            yOffset = 0;
-        else
-            yOffset += 1;
-        
-        
-        
-        
-        NSString* javascript = [NSString stringWithFormat:@"window.scrollTo(0, %f);",yOffset];
-        //(@"javascript = %@", javascript);
-        [self.webViewVerses stringByEvaluatingJavaScriptFromString:javascript];
+        CGFloat minY = -autoScrollView.adjustedContentInset.top;
+        CGFloat maxY = MAX(minY, autoScrollView.contentSize.height - autoScrollView.bounds.size.height + autoScrollView.adjustedContentInset.bottom);
+        CGFloat newY = MIN(MAX(yOffset + 1, minY), maxY);
+        [autoScrollView setContentOffset:CGPointMake(autoScrollView.contentOffset.x, newY) animated:NO];
         
         
         
@@ -4301,6 +4309,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 
 - (void) clearSelections{
     
+    self.mbSelectionGeneration++;//+20261123 Phase 3b stale async guard
     [[self.view viewWithTag:kTagTrasparentView] removeFromSuperview];
     
     [[self.navigationController.navigationBar viewWithTag:kTagNavBarTrasparentView] removeFromSuperview];
@@ -4326,7 +4335,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         MBLog(@"command = %@", command);
         
-        [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+        [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
     }
     
     [self.arrayToMookmark removeAllObjects];
@@ -4392,7 +4401,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
                 
                 MBLog(@"command = %@", command);
                 
-                [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+                [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
             }
             
             [self.arrayToMookmark removeAllObjects];
@@ -4476,7 +4485,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
             
             MBLog(@"command = %@", command);
             
-            [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+            [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
         }
         
         [self.arrayToMookmark removeAllObjects];
@@ -4971,7 +4980,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
             self.isLoaded = NO;
             
             self.isWebViewLoaded = NO;
-            [self.webViewVerses loadHTMLString:fullverse  baseURL:[MBUtils getBaseURL]];
+            [self mb_loadChapterHTML:fullverse];//+20261123 Phase 3b (was loadHTMLString:baseURL:[MBUtils getBaseURL])
             
             [self.tableViewVerses reloadData];
         }
@@ -4982,78 +4991,274 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     
 }
 
-#pragma mark UIWebviewDelegate
+#pragma mark WKWebView (reading screen)
+//+20261123 Phase 3b: UIWebView → WKWebView. The melt:// routes and the "mb" script messages both end in
+// mb_dispatchBridgeType:value:, which validates them before calling the existing handlers.
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error{
-    
-    //self.isJSWebViewLoaded = YES;
-    ///+20131114
-    
+static const CFTimeInterval kMBProcessRecoveryInterval = 10.0;   // at most one automatic reload per 10 s
+
+static BOOL MBIsDecimalDigits(NSString *value) {
+    if (value.length == 0 || value.length > 6) return NO;
+    for (NSUInteger i = 0; i < value.length; i++) {
+        unichar c = [value characterAtIndex:i];
+        if (c < '0' || c > '9') return NO;
+    }
+    return YES;
+}
+
+- (void) mb_loadChapterHTML:(NSString *)html{
+
+    self.mbNavigationGeneration++;
+    self.mbScrollRequestGeneration++;
+    self.mbVerseScrollInFlight = NO;
+    self.mbCurrentNavigation = [self.webViewVerses loadHTMLString:(html ?: @"") baseURL:nil];
+    if (self.mbCurrentNavigation == nil) {
+        self.isWebViewLoaded = YES;   // nothing started: never leave configureView waiting
+    }
+}
+
+// Scrolls the element (Verse-N) to just below the glass top bar. adjustedContentInset.top is applied here once;
+// nothing else corrects the result afterwards. isLoaded becomes YES when done, as endscroll: did before.
+- (void) mb_scrollToVerseElement:(NSString *)elementId{
+
+    self.mbScrollRequestGeneration++;
+    if (self.webViewVerses == nil || elementId.length == 0) {
+        self.mbVerseScrollInFlight = NO;
+        self.isLoaded = YES;
+        return;
+    }
+    self.mbVerseScrollInFlight = YES;
+    [self mb_scrollToVerseElement:elementId navigation:self.mbNavigationGeneration request:self.mbScrollRequestGeneration attempt:0];
+}
+
+- (void) mb_scrollToVerseElement:(NSString *)elementId navigation:(NSUInteger)navigationGeneration request:(NSUInteger)requestGeneration attempt:(NSInteger)attempt{
+
+    __weak MalayalamBibleDetailViewController *weakSelf = self;
+    [self.webViewVerses callAsyncJavaScript:@"var e=document.getElementById(id);if(!e){return null;}return e.getBoundingClientRect().top+window.scrollY;"
+                                  arguments:@{@"id": elementId}
+                                    inFrame:nil
+                             inContentWorld:WKContentWorld.pageWorld
+                          completionHandler:^(id result, NSError *error) {
+        MalayalamBibleDetailViewController *strongSelf = weakSelf;
+        if (strongSelf == nil) return;
+        // A newer page, a newer request, a scroll-to-top or the user's drag owns the scroll position now.
+        if (strongSelf.mbNavigationGeneration != navigationGeneration || strongSelf.mbScrollRequestGeneration != requestGeneration) return;
+
+        UIScrollView *scrollView = strongSelf.webViewVerses.scrollView;
+        if (error == nil && scrollView != nil && [result isKindOfClass:[NSNumber class]] && isfinite([result doubleValue])) {
+            CGFloat zoom = scrollView.zoomScale > 0 ? scrollView.zoomScale : 1.0;
+            CGFloat minY = -scrollView.adjustedContentInset.top;
+            CGFloat maxY = MAX(minY, scrollView.contentSize.height - scrollView.bounds.size.height + scrollView.adjustedContentInset.bottom);
+            CGFloat target = [result doubleValue] * zoom - scrollView.adjustedContentInset.top;
+            if (target > maxY + 1.0 && attempt == 0) {
+                // contentSize may not include the new layout yet: measure once more shortly, then clamp.
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    MalayalamBibleDetailViewController *retrySelf = weakSelf;
+                    if (retrySelf == nil) return;
+                    if (retrySelf.mbNavigationGeneration != navigationGeneration || retrySelf.mbScrollRequestGeneration != requestGeneration) return;
+                    [retrySelf mb_scrollToVerseElement:elementId navigation:navigationGeneration request:requestGeneration attempt:attempt + 1];
+                });
+                return;
+            }
+            [scrollView setContentOffset:CGPointMake(scrollView.contentOffset.x, MIN(MAX(target, minY), maxY)) animated:NO];
+        }
+        strongSelf.mbVerseScrollInFlight = NO;
+        MBLog(@"set yes");
+        strongSelf.isLoaded = YES;
+    }];
+}
+
+- (void) mb_cancelPendingVerseScroll{
+
+    if (!self.mbVerseScrollInFlight) return;
+    self.mbScrollRequestGeneration++;
+    self.mbVerseScrollInFlight = NO;
+    self.isLoaded = YES;
+}
+
+// Single entry for page → app messages (WKScriptMessage or melt:// URL). Only the known routes, with valid
+// values, reach the existing handlers; they run on the next main-queue turn, as performSelectorOnMainThread did.
+- (void) mb_dispatchBridgeType:(NSString *)type value:(NSString *)value{
+
+    if (type.length == 0 || type.length > 32 || value.length == 0 || value.length > 16) {
+        MBLog(@"bridge: ignored malformed message");
+        return;
+    }
+
+    __weak MalayalamBibleDetailViewController *weakSelf = self;
+    NSUInteger navigationGeneration = self.mbNavigationGeneration;
+
+    if ([type caseInsensitiveCompare:@"verseClicked"] == NSOrderedSame) {
+        if (!MBIsDecimalDigits(value) || !self.isWebViewLoaded) return;
+        NSInteger row = [value integerValue];
+        if (row < 0 || row >= (NSInteger)self.bVerses.count) return;
+        NSString *rowString = [NSString stringWithFormat:@"%ld", (long)row];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            MalayalamBibleDetailViewController *strongSelf = weakSelf;
+            if (strongSelf == nil || strongSelf.mbNavigationGeneration != navigationGeneration || !strongSelf.isWebViewLoaded) return;
+            if (row >= (NSInteger)strongSelf.bVerses.count) return;
+            [strongSelf verseClicked:rowString];
+        });
+    } else if ([type caseInsensitiveCompare:@"chapterClicked"] == NSOrderedSame) {
+        if (!MBIsDecimalDigits(value)) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf chapterClicked:value];
+        });
+    } else if ([type caseInsensitiveCompare:@"endscroll"] == NSOrderedSame) {
+        if (![value isEqualToString:@"yes"]) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            MalayalamBibleDetailViewController *strongSelf = weakSelf;
+            if (strongSelf == nil || strongSelf.mbNavigationGeneration != navigationGeneration) return;
+            [strongSelf endscroll:value];
+        });
+    } else if ([type caseInsensitiveCompare:@"outsideTap"] == NSOrderedSame) {
+        // Outside taps are detected natively (mb_handleSelectionOutsideTap:); the page's message is not used.
+        MBLog(@"bridge: outsideTap ignored");
+    } else {
+        MBLog(@"bridge: ignored unknown type");
+    }
+}
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message{
+
+    if (message.webView != self.webViewVerses) return;
+    if (![message.name isEqualToString:kMBScriptMessageHandlerName]) return;
+    if (!message.frameInfo.isMainFrame) return;
+    if (![message.body isKindOfClass:[NSDictionary class]]) return;
+
+    NSDictionary *body = (NSDictionary *)message.body;
+    id type = body[@"type"];
+    id value = body[@"value"];
+    if (![type isKindOfClass:[NSString class]]) return;
+
+    NSString *valueString = nil;
+    if ([value isKindOfClass:[NSString class]]) {
+        valueString = value;
+    } else if ([value isKindOfClass:[NSNumber class]] && CFGetTypeID((__bridge CFTypeRef)value) != CFBooleanGetTypeID()) {
+        double number = [value doubleValue];
+        if (isfinite(number) && number >= 0 && number < 1000000 && number == floor(number)) {
+            valueString = [NSString stringWithFormat:@"%ld", (long)number];
+        }
+    }
+    if (valueString == nil) {
+        MBLog(@"bridge: ignored message with invalid value");
+        return;
+    }
+    [self mb_dispatchBridgeType:type value:valueString];
+}
+
+#pragma mark WKNavigationDelegate
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler{
+
+    NSURL *url = navigationAction.request.URL;
+    NSString *scheme = [url scheme].lowercaseString;
+
+    if (webView != self.webViewVerses) {
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
+    }
+
+    if ([scheme isEqualToString:@"melt"]) {
+        NSString *pathsegment = [url path];
+        if (pathsegment.length > 1 && [url host].length > 0) {
+            [self mb_dispatchBridgeType:[url host] value:[pathsegment substringFromIndex:1]];
+        }
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
+    }
+
+    // The chapter page itself (loadHTMLString:baseURL:nil loads as about:blank in the main frame).
+    BOOL isMainFrame = (navigationAction.targetFrame != nil && navigationAction.targetFrame.isMainFrame);
+    if (isMainFrame && [scheme isEqualToString:@"about"] && [[url resourceSpecifier] isEqualToString:@"blank"]) {
+        [self mb_discardSelectionForReload];//+20261117 a new page replaces this chapter
+        decisionHandler(WKNavigationActionPolicyAllow);
+        return;
+    }
+
+    MBLog(@"blocked navigation (scheme %@)", scheme);
+    decisionHandler(WKNavigationActionPolicyCancel);
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error{
+
+    if (webView != self.webViewVerses) return;
+    if (self.mbCurrentNavigation != nil && navigation != self.mbCurrentNavigation) return;   // an older load
     self.isWebViewLoaded = YES;
 }
-- (void)webViewDidFinishLoad:(UIWebView *)wView {
-    
-    
-    
+
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error{
+
+    if (webView != self.webViewVerses) return;
+    if (self.mbCurrentNavigation != nil && navigation != self.mbCurrentNavigation) return;   // an older load
+    self.isWebViewLoaded = YES;
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation{
+
+    if (webView != self.webViewVerses) return;
+    if (self.mbCurrentNavigation != nil && navigation != self.mbCurrentNavigation) return;   // an older load
+
     self.isWebViewLoaded = YES;
     [self updateContentInsetsForBottomToolbar];//+20261117 new chapter content
     [self mb_restoreFloatingBar];//+20261117
-    //self.isJSWebViewLoaded = YES;
-    //self.isLoaded = NO;
     MBLog(@"set no");
     [self mb_updateContentInsetsForTopBar];//+20261123
     [self mb_settleTextBelowTopBarIfAtTop];//+20261123 a new chapter starts below the glass bar
     [self scrollToVerseId];
     [self loadSelections];
     MBLog(@"set yes");
-    //self.isLoaded = YES;
-    
-    //[self.webViewVerses stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:      @"document.querySelector('meta[name=viewport]').setAttribute('content', 'width=%d;', false); ",      (int)self.webViewVerses.frame.size.width]];
-    
-    
-    
 }
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
-    
-    
-    NSURL *meltUrl = [request URL];
-    
-    //NSString *url = [meltUrl absoluteString];
-    
-    NSString *scheme = [meltUrl scheme].lowercaseString;
-    
-    if ( [scheme isEqualToString:@"melt"]) {
-        
-        NSString *pathsegment = [meltUrl path];
-        if (pathsegment.length > 0) {
-            
-            NSString *fnName = [[meltUrl host] stringByAppendingString:@":"];
-            
-            MBLog(@"fnName = %@", fnName);
-            
-            MBLog(@"pathsegment = %@", pathsegment);
-            
-            if ([@"chapterClicked:" isEqualToString:fnName] || [@"verseClicked:" isEqualToString:fnName] || [@"endscroll:" isEqualToString:fnName]) {
-                
-                NSString *parameter = [pathsegment substringFromIndex:1];
-                [self performSelectorOnMainThread:NSSelectorFromString(fnName) withObject:parameter waitUntilDone:NO];
-            }
-        }
-        
-        
-        
-        return NO;
-        
-    }else{
-        
-        [self mb_discardSelectionForReload];//+20261117 a new page replaces this chapter
+
+// The page's process ended (memory pressure or a crash): reload the current chapter, at most once per
+// kMBProcessRecoveryInterval so a page that keeps failing cannot cause a reload loop.
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView{
+
+    if (webView != self.webViewVerses) return;
+
+    self.mbNavigationGeneration++;
+    [self mb_cancelPendingVerseScroll];
+    [self stopAutoScroll];
+    [self mb_discardSelectionForReload];
+
+    CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+    BOOL recentlyRecovered = (self.mbLastProcessRecoveryTime > 0 && (now - self.mbLastProcessRecoveryTime) < kMBProcessRecoveryInterval);
+    if (recentlyRecovered || self.selectedBook == nil) {
+        MBLog(@"web content process ended; no automatic reload");
+        self.isWebViewLoaded = YES;   // never leave configureView waiting
+        return;
     }
-    
-    return YES;
+    self.mbLastProcessRecoveryTime = now;
+
+    BibleDao *bDao = [[BibleDao alloc] init];
+    NSDictionary *ddict = [bDao getChapter:self.selectedBook.bookId Chapter:self.chapterId];
+    NSString *fullverse = [ddict valueForKey:@"fullverse"];
+    if (fullverse.length == 0) {
+        self.isWebViewLoaded = YES;
+        return;
+    }
+    self.bVerses = [ddict valueForKey:@"verse_array"];
+
+    self.isLoaded = NO;
+    self.isWebViewLoaded = NO;
+    [self mb_loadChapterHTML:fullverse];
+    [self.tableViewVerses reloadData];
 }
+
+- (void)dealloc{
+
+    [_timerScroll invalidate];
+    WKWebView *webView = _webViewVerses;
+    [webView.configuration.userContentController removeScriptMessageHandlerForName:kMBScriptMessageHandlerName];
+    webView.navigationDelegate = nil;
+    webView.scrollView.delegate = nil;
+    [webView stopLoading];
+}
+
 - (void) endscroll:(NSString *)row{
     
-    [self mb_moveScrolledVerseBelowTopBar];//+20261123 scrollToDivId put the verse at the very top, under the glass bar
+    //+20261123 Phase 3b: verse positioning is native and already places the verse below the glass bar
+    // (adjustedContentInset applied once); no second correction here. The JS scrollToDivId is no longer called.
     MBLog(@"set yes");
     self.isLoaded = YES;
     
@@ -5064,6 +5269,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 }
 - (void) verseClicked:(NSString *)row{
     
+    self.mbSelectionGeneration++;//+20261123 Phase 3b stale async guard
     [self stopAutoScroll];
     
     MBLog(@"verseClicked = %@", row);
@@ -5099,7 +5305,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     
     MBLog(@"command = %@", command);
     
-    [self.webViewVerses stringByEvaluatingJavaScriptFromString:command];
+    [self.webViewVerses evaluateJavaScript:command completionHandler:nil];//+20261123 Phase 3b
     
     
     if (kMBUseLegacyShareToolbar) {//+20261117 legacy share toolbar beside the verse (replaced by the selection action menu)
@@ -5110,13 +5316,9 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
     if(!toolBarShare && self.arrayToMookmark.count == 1){
         
         
-        NSMutableString *command2 = [NSMutableString stringWithFormat:@"getPosition('Verse-%@')", [dict valueForKey:@"verseid"]];
-        MBLog(@"command2 = %@", command2);
-        NSString *ss = [self.webViewVerses stringByEvaluatingJavaScriptFromString:command2];
-        
         CGRect frma2 = self.webViewVerses.frame;
         
-        CGFloat ypos = [ss integerValue];
+        CGFloat ypos = 0;//+20261123 Phase 3b: getPosition call deleted (branch disabled by kMBUseLegacyShareToolbar)
         
         toolBarShare = [[UIToolbar alloc] initWithFrame:CGRectMake(frma2.size.width-70, ypos, 70, 28)];
         if ([UIDeviceHardware isOS7Device]) {
@@ -5198,16 +5400,7 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
         
         if(self.arrayToMookmark.count > 0){
             
-            NSString *rowInd = [self.arrayToMookmark lastObject];
-            
-            NSDictionary *dict = [self.bVerses objectAtIndex:[rowInd integerValue]];
-            NSMutableString *command2 = [NSMutableString stringWithFormat:@"getPosition('Verse-%@')", [dict valueForKey:@"verseid"]];
-            
-            MBLog(@"command2 = %@", command2);
-            
-            NSString *ss = [self.webViewVerses stringByEvaluatingJavaScriptFromString:command2];
-            
-            
+            //+20261123 Phase 3b: getPosition call deleted (branch disabled by kMBUseLegacyShareToolbar)
             UILabel *toolbarlabel = (UILabel *)[toolBarShare viewWithTag:kTagShareLabelCount];
             toolbarlabel.text = [NSString stringWithFormat:@"%lu", (unsigned long)self.arrayToMookmark.count];
             
@@ -5217,7 +5410,6 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
             [UIView setAnimationBeginsFromCurrentState:YES];
             [UIView setAnimationDuration:0.1];
             CGRect frme = toolBarShare.frame;
-            frme.origin.y = [ss integerValue];
             
             toolBarShare.frame = frme;
             [UIView commitAnimations];
@@ -5538,6 +5730,8 @@ static const CGFloat kSelectionActionCornerRadius = 22.0;   //+20261118
 }
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView{
     
+    if (scrollView == self.webViewVerses.scrollView) [self mb_cancelPendingVerseScroll];//+20261123 Phase 3b: the user's drag wins
+
     float scrollViewHeight = scrollView.frame.size.height;
     float scrollContentSizeHeight = scrollView.contentSize.height;
     float scrollOffset = scrollView.contentOffset.y;
