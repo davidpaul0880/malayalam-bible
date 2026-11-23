@@ -17,6 +17,7 @@
 @interface ChapterSelection (Private)
 
 - (void) openPageWithChapter:(NSUInteger)chapter;
+- (void) mb_applyNightModeStyle;   //+20261123
 
 @end
 
@@ -90,6 +91,7 @@ const CGFloat tagWidthOffset = 10.0f;
             
         }
     }
+    lblTitle.textColor = [UIColor labelColor];//+20261123 follows the screen's Light / Night style (was white on a white bar in Night mode)
     self.navigationItem.titleView = lblTitle;
     
     /** Clear Screen
@@ -104,7 +106,7 @@ const CGFloat tagWidthOffset = 10.0f;
     [self.scrollViewBar removeFromSuperview];
     *****/
     
-    self.view.backgroundColor = [UIColor whiteColor];
+    self.view.backgroundColor = [UIColor systemBackgroundColor];//+20261123 white in Light, black in Night (via overrideUserInterfaceStyle)
     [scrollViewBar setFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
 
     NSInteger yOffset = 15;
@@ -113,9 +115,7 @@ const CGFloat tagWidthOffset = 10.0f;
         self.lblChapter = [[UILabel alloc] initWithFrame:CGRectMake(0, 10, self.view.frame.size.width, 30)];
         
         lblChapter.text = [BibleDao getTitleChapterButton];
-        if(isdark){
-            lblChapter.textColor = [UIColor whiteColor];
-        }
+        lblChapter.textColor = [UIColor secondaryLabelColor];//+20261123 readable heading in both modes
         lblChapter.backgroundColor = [UIColor clearColor];
         lblChapter.textAlignment = NSTextAlignmentCenter;
         lblChapter.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -126,9 +126,7 @@ const CGFloat tagWidthOffset = 10.0f;
         yOffset = 50;
     }
     //scrollViewBar.backgroundColor = [UIColor redColor];
-    if(isdark){
-        self.view.backgroundColor = [UIColor darkGrayColor];
-    }
+    //+20261123 (was darkGrayColor in Night mode; systemBackgroundColor above now covers both modes)
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     scrollViewBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;//UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
 
@@ -176,6 +174,18 @@ const CGFloat tagWidthOffset = 10.0f;
         if([UIDeviceHardware isOS7Device]){
             tagButton.tintColor = [UIColor defaultWindowColor];
         }
+        //+20261123 Chapter numbers on rounded tiles: label-colour numbers on a grouped fill (strong contrast in both
+        // modes); the current chapter is a theme-colour tile with black or white text, whichever reads better.
+        tagButton.layer.cornerRadius = 10.0;
+        tagButton.layer.cornerCurve = kCACornerCurveContinuous;
+        if (self.selectedChapter == (i+1)) {
+            UIColor *theme = [UIColor defaultWindowColor];
+            tagButton.backgroundColor = theme;
+            [tagButton setTitleColor:[ChapterSelection mb_textColorOnColor:theme] forState:UIControlStateNormal];
+        } else {
+            tagButton.backgroundColor = [UIColor secondarySystemBackgroundColor];
+            [tagButton setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+        }
        
                
         [tagButton setTitle:number forState:UIControlStateNormal];
@@ -198,6 +208,52 @@ const CGFloat tagWidthOffset = 10.0f;
     
     
     [self.view addSubview:scrollViewBar];
+    [self mb_applyNightModeStyle];//+20261123
+}
+
+#pragma mark Light / Night style (+20261123)
+
+// White or black text, whichever has the stronger contrast on the given colour (WCAG relative luminance).
++ (UIColor *) mb_textColorOnColor:(UIColor *)color{
+
+    CGFloat r = 0, g = 0, b = 0, a = 0;
+    if (![color getRed:&r green:&g blue:&b alpha:&a]) return [UIColor whiteColor];
+    CGFloat (^lin)(CGFloat) = ^CGFloat(CGFloat c){ return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); };
+    CGFloat luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    CGFloat contrastWithWhite = 1.05 / (luminance + 0.05);
+    return contrastWithWhite >= 3.5 ? [UIColor whiteColor] : [UIColor blackColor];
+}
+
+// The app's Night setting (kNightTime) decides the style of this screen and of its navigation bar, so every
+// dynamic colour above (background, heading, tiles, title, back / Cancel button) resolves to the same mode.
+// The bar gets an opaque background in the page colour: no white block above a dark page, no grey patches.
+- (void) mb_applyNightModeStyle{
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    self.overrideUserInterfaceStyle = style;
+
+    UINavigationBar *bar = self.navigationController.navigationBar;
+    bar.overrideUserInterfaceStyle = style;   // the bar's material and back / Cancel button follow the same mode
+
+    UITraitCollection *traits = [UITraitCollection traitCollectionWithUserInterfaceStyle:style];
+    UIColor *page = [[UIColor systemBackgroundColor] resolvedColorWithTraitCollection:traits];
+    UIColor *title = [[UIColor labelColor] resolvedColorWithTraitCollection:traits];
+
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithOpaqueBackground];
+    appearance.backgroundColor = page;
+    appearance.shadowColor = [UIColor clearColor];
+    appearance.titleTextAttributes = @{NSForegroundColorAttributeName: title};
+
+    // Item-level, so the book list underneath keeps its own bar when this screen is popped.
+    self.navigationItem.standardAppearance = appearance;
+    self.navigationItem.scrollEdgeAppearance = appearance;
+    self.navigationItem.compactAppearance = appearance;
+    self.navigationItem.compactScrollEdgeAppearance = appearance;
+
+    // The presenting sheet / navigation controller behind the bar uses the same page colour.
+    self.navigationController.view.backgroundColor = page;
 }
 - (void)viewDidLoad
 {
@@ -230,6 +286,7 @@ const CGFloat tagWidthOffset = 10.0f;
 - (void) viewWillAppear:(BOOL)animated{
     
     [super viewWillAppear:animated];
+    [self mb_applyNightModeStyle];//+20261123 pick up a Night / Light change made while away
     if([UIDeviceHardware isOS7Device]){
         
     }else{
