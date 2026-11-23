@@ -645,14 +645,14 @@ typedef enum ScrollDirection {
         
         CGRect tableRect =  self.webViewVerses.frame;
         tableRect.origin.y = 0;
-        tableRect.size.height = self.view.frame.size.height-45;
+        tableRect.size.height = self.view.frame.size.height;//+20261123 to the bottom edge: the floating capsule replaced the 45 pt toolbar slot
         
         self.webViewVerses.frame = tableRect;
         
         
         CGRect tableRect2 =  self.tableViewVerses.frame;
         tableRect2.origin.y = yValue;
-        tableRect2.size.height = self.view.frame.size.height-45-yValue;
+        tableRect2.size.height = self.view.frame.size.height-yValue;//+20261123
         //tableRect2.size.height -= 45;
         self.tableViewVerses.frame = tableRect2;
         
@@ -1145,7 +1145,7 @@ typedef enum ScrollDirection {
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     
     
-    self.tableViewVerses = [[UITableView alloc] initWithFrame:CGRectMake(self.view.frame.size.width-tableWidth, yValue, tableWidth, self.view.frame.size.height-(45+yValue)) style:UITableViewStylePlain];
+    self.tableViewVerses = [[UITableView alloc] initWithFrame:CGRectMake(self.view.frame.size.width-tableWidth, yValue, tableWidth, self.view.frame.size.height-yValue) style:UITableViewStylePlain];//+20261123 no empty 45 pt strip at the bottom
     self.tableViewVerses.autoresizingMask = UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin;
     self.tableViewVerses.delegate = self;
     
@@ -1154,7 +1154,7 @@ typedef enum ScrollDirection {
     
     
     //CGRect rect = self.view.frame;
-    self.webViewVerses = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width-tableWidth, self.view.frame.size.height-(45))];
+    self.webViewVerses = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width-tableWidth, self.view.frame.size.height)];//+20261123 no empty 45 pt strip at the bottom
     
     
     
@@ -2028,13 +2028,21 @@ static void MBSetBottomContentInset(UIScrollView *scrollView, CGFloat inset){
     CGFloat barTop = self.floatingBarTop;
     if (self.isSelectionMenuVisible && self.selectionMenuTop > 0) barTop = MIN(barTop, self.selectionMenuTop);//+20261117 count label / two-row menu
 
-    CGRect webFrame = self.webViewVerses.frame;
-    CGFloat webInset = barShown ? MAX(0, CGRectGetMaxY(webFrame) - barTop + kGlassContentSpacing) : 0;
-    MBSetBottomContentInset(self.webViewVerses.scrollView, webInset);
+    //+20261123 The text and index now reach the bottom edge, so measure what they need to clear (the capsule, or
+    // the home indicator when no bar is shown) and subtract the bottom inset the system already adds.
+    CGFloat clearLine = barShown ? barTop - kGlassContentSpacing : self.view.bounds.size.height - self.view.safeAreaInsets.bottom;
 
-    CGRect tableFrame = self.tableViewVerses.frame;
-    CGFloat tableInset = barShown ? MAX(0, CGRectGetMaxY(tableFrame) - barTop + kGlassContentSpacing) : 0;
-    MBSetBottomContentInset(self.tableViewVerses, tableInset);
+    UIScrollView *webScroll = self.webViewVerses.scrollView;
+    CGRect webFrame = [self.webViewVerses.superview convertRect:self.webViewVerses.frame toView:self.view];
+    CGFloat webSystem = webScroll.adjustedContentInset.bottom - webScroll.contentInset.bottom;
+    CGFloat webInset = MAX(0, CGRectGetMaxY(webFrame) - clearLine - webSystem);
+    MBSetBottomContentInset(webScroll, webInset);
+
+    UIScrollView *tableScroll = self.tableViewVerses;
+    CGRect tableFrame = [self.tableViewVerses.superview convertRect:self.tableViewVerses.frame toView:self.view];
+    CGFloat tableSystem = tableScroll.adjustedContentInset.bottom - tableScroll.contentInset.bottom;
+    CGFloat tableInset = MAX(0, CGRectGetMaxY(tableFrame) - clearLine - tableSystem);
+    MBSetBottomContentInset(tableScroll, tableInset);
 }
 
 #pragma mark iOS 26 Liquid Glass navigation controls (+20261123)
