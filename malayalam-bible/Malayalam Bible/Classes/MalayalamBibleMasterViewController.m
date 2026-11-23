@@ -198,6 +198,7 @@
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self mb_applyNightModeStyle];//+20261123 also restores this screen's bar after the chapter list is popped
     
 }
 
@@ -290,16 +291,38 @@
 #pragma mark UItableDataSource
 - (NSArray *)sectionIndexTitlesForTableView:(UITableView *)tableView {
     
-    
-    
-    return  self.indexArray;
+    //+20261123 Compact index: one letter cluster per book (with its number for 1 / 2 / 3 books), instead of the
+    // padded 4-5 character names that made the index wide, clipped at the screen edge and crowding the > arrows.
+    // One title per book, in section order.
+    if (books.count == 0) return self.indexArray;
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:books.count];
+    for (Book *book in books) {
+        [titles addObject:[self mb_indexTitleForName:book.shortName]];
+    }
+    return titles;
     
 }
 - (NSInteger)tableView:(UITableView *)tableView sectionForSectionIndexTitle:(NSString *)title atIndex:(NSInteger)index {
     
+    //+20261123 By position: the compact titles can repeat (several books share a first letter).
+    return MIN(MAX(index, 0), (NSInteger)books.count - 1);
     
-    return [self.indexArray indexOfObject:title];
-    
+}
+
+//+20261123 "1 ശമൂവേൽ" -> "1ശ", "ഉല്പത്തി" -> "ഉ": the first letter cluster, keeping a leading book number.
+- (NSString *) mb_indexTitleForName:(NSString *)name{
+
+    NSString *trimmed = [name stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (trimmed.length == 0) return @" ";
+    NSString *prefix = @"";
+    unichar first = [trimmed characterAtIndex:0];
+    if (first >= '0' && first <= '9') {
+        prefix = [trimmed substringToIndex:1];
+        trimmed = [[trimmed substringFromIndex:1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (trimmed.length == 0) return prefix;
+    }
+    NSRange cluster = [trimmed rangeOfComposedCharacterSequenceAtIndex:0];
+    return [prefix stringByAppendingString:[trimmed substringWithRange:cluster]];
 }
 // Customize the number of sections in the table view.
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -339,17 +362,22 @@
             //bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
             
             cell.textLabel.numberOfLines = 2;
+            //+20261123 Selected row: a solid grey that follows the mode (#E5E5EA Light / #2C2C2E Night)
+            // under the normal black / white text, instead of the default light highlight.
+            UIView *selectedBackground = [[UIView alloc] init];
+            selectedBackground.backgroundColor = [UIColor systemGray5Color];
+            cell.selectedBackgroundView = selectedBackground;
         }
     bool isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
     if (isdark ){
         cell.backgroundColor = [UIColor blackColor];
         
-        cell.textLabel.highlightedTextColor = [UIColor blackColor];
+        cell.textLabel.highlightedTextColor = [UIColor whiteColor];//+20261123 was black on the light highlight
         cell.textLabel.textColor = [UIColor whiteColor];
     }else{
         cell.backgroundColor = [UIColor whiteColor];
         
-        cell.textLabel.highlightedTextColor = [UIColor whiteColor];
+        cell.textLabel.highlightedTextColor = [UIColor blackColor];//+20261123 readable on the light grey selection
         cell.textLabel.textColor = [UIColor blackColor];
     }
     
@@ -594,6 +622,7 @@
         
     }
     
+    [self mb_applyNightModeStyle];//+20261123
    
     
     
@@ -663,6 +692,34 @@
         
     }
     
+}
+
+//+20261123 The app's Night setting decides this screen's style and its bar, which gets an opaque background in the
+// page colour (black / white). The old barTintColor / barStyle calls above are ignored on iOS 15+, which left a
+// white bar and sheet header above the black list in Night mode. Item-level, so other screens' bars are untouched.
+- (void) mb_applyNightModeStyle{
+
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIUserInterfaceStyle style = isdark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    UIColor *page = isdark ? [UIColor blackColor] : [UIColor whiteColor];
+    UIColor *title = isdark ? [UIColor whiteColor] : [UIColor blackColor];
+
+    self.overrideUserInterfaceStyle = style;
+    self.navigationController.navigationBar.overrideUserInterfaceStyle = style;   // Cancel / back buttons match
+    self.navigationController.view.backgroundColor = page;                         // the sheet behind the bar
+
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithOpaqueBackground];
+    appearance.backgroundColor = page;
+    appearance.shadowColor = isdark ? [UIColor colorWithWhite:1.0 alpha:0.15] : [UIColor colorWithWhite:0.0 alpha:0.12];
+    appearance.titleTextAttributes = @{NSForegroundColorAttributeName: title};
+    self.navigationItem.standardAppearance = appearance;
+    self.navigationItem.scrollEdgeAppearance = appearance;
+    self.navigationItem.compactAppearance = appearance;
+    self.navigationItem.compactScrollEdgeAppearance = appearance;
+
+    self.tableViewBooks.sectionIndexBackgroundColor = [UIColor clearColor];
+    self.tableViewBooks.sectionIndexTrackingBackgroundColor = [UIColor clearColor];
 }
 
 - (void) loadData{
