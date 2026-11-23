@@ -7,12 +7,12 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
 
-@interface Information : UIViewController {
-    UIWebView *webView;
-}
+//+20261123 Phase 2 (UIWebView removal): About is a WKWebView built in code (loadView); Information.xib is not loaded.
+@interface Information : UIViewController <WKNavigationDelegate>
 
-@property (nonatomic, retain) IBOutlet UIWebView *webView;
+@property (nonatomic, strong) WKWebView *webView;
 
 @end
 

@@ -103,7 +103,6 @@
 		0F95DFE616136BE600057211 /* zoom_in@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0F95DFE416136BE500057211 /* zoom_in@2x.png */; };
 		0F95DFE716136BE600057211 /* zoom_out@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0F95DFE516136BE500057211 /* zoom_out@2x.png */; };
 		0FBAE74C1451FFB1007718D3 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 0FBAE74B1451FFB1007718D3 /* Icon.png */; };
-		0FBAE75314520F6B007718D3 /* Information.xib in Resources */ = {isa = PBXBuildFile; fileRef = 0FBAE75114520F6B007718D3 /* Information.xib */; };
 		0FBAE7641455D46D007718D3 /* Icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0FBAE7631455D46D007718D3 /* Icon@2x.png */; };
 		0FBAE7661455D6C0007718D3 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0FBAE7651455D6C0007718D3 /* Default@2x.png */; };
 		0FFE50881450636E00BC85EE /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0FFE50871450636E00BC85EE /* UIKit.framework */; };
@@ -829,7 +828,6 @@
 				8FB02DB71D1704030074E650 /* Home.storyboard in Resources */,
 				039C64961A9C7CD1000B736D /* pencil.png in Resources */,
 				0FBAE74C1451FFB1007718D3 /* Icon.png in Resources */,
-				0FBAE75314520F6B007718D3 /* Information.xib in Resources */,
 				0FBAE7641455D46D007718D3 /* Icon@2x.png in Resources */,
 				0FBAE7661455D6C0007718D3 /* Default@2x.png in Resources */,
 				0F24AB9414803B130096403E /* Icon-72.png in Resources */,

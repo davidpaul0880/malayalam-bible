@@ -31,6 +31,44 @@
 
 #pragma mark - View lifecycle
 
+//+20261123 Phase 2 (UIWebView removal): the view is built here, without [super loadView], so the old
+// Information.xib (which holds a UIWebView) is never loaded; callers keep initWithNibName:@"Information".
+// WKWebView: no JavaScript (the page has none), nothing stored between visits, no link previews, no data
+// detectors (the e-mail addresses stay plain text). Transparent with the page colour behind it, so Night mode
+// never shows a white flash while the page loads.
+- (void)loadView
+{
+    BOOL isdark = [[NSUserDefaults standardUserDefaults] boolForKey:kNightTime];
+    UIColor *pageColor = isdark ? [UIColor blackColor] : [UIColor whiteColor];
+
+    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 480)];
+    root.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    root.backgroundColor = pageColor;
+
+    WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
+    configuration.defaultWebpagePreferences.allowsContentJavaScript = NO;
+    configuration.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
+    configuration.dataDetectorTypes = WKDataDetectorTypeNone;
+
+    WKWebView *aboutWebView = [[WKWebView alloc] initWithFrame:root.bounds configuration:configuration];
+    aboutWebView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    aboutWebView.navigationDelegate = self;
+    aboutWebView.allowsLinkPreview = NO;
+    aboutWebView.opaque = NO;
+    aboutWebView.backgroundColor = pageColor;
+    aboutWebView.scrollView.backgroundColor = pageColor;
+    aboutWebView.underPageBackgroundColor = pageColor;
+    [root addSubview:aboutWebView];
+
+    self.webView = aboutWebView;
+    self.view = root;
+}
+
+- (void)dealloc
+{
+    webView.navigationDelegate = nil;   // ivar from @synthesize webView
+}
+
 - (void)viewDidLoad
 {
     //<a href=\"mailto:jeesmon@gmail.com?cc=jpulikkottil@gmail.com\">Jeesmon Jacob (jeesmon@gmail.com)</a>
@@ -62,6 +100,7 @@
     navigationBar.compactAppearance = barAppearance;
     navigationBar.scrollEdgeAppearance = barAppearance;
     navigationBar.compactScrollEdgeAppearance = barAppearance;
+    NSString *nightStyle = @"";
     if (isdark) {
         self.view.backgroundColor = [UIColor blackColor];
         self.webView.opaque = NO;
@@ -70,10 +109,14 @@
         CGFloat lr = 0, lg = 0, lb = 0, la = 0;
         [[UIColor defaultWindowColor] getRed:&lr green:&lg blue:&lb alpha:&la];
         NSString *linkHex = [NSString stringWithFormat:@"#%02X%02X%02X", (int)lroundf(lr * 255), (int)lroundf(lg * 255), (int)lroundf(lb * 255)];
-        NSString *style = [NSString stringWithFormat:@"<head><style>body{background:#000;color:#E5E5EA;}a{color:%@;}</style></head>", linkHex];
-        html = [html stringByReplacingOccurrencesOfString:@"<html>" withString:[@"<html>" stringByAppendingString:style]];
+        nightStyle = [NSString stringWithFormat:@"<style>body{background:#000;color:#E5E5EA;}a{color:%@;}</style>", linkHex];
     }
-    [self.webView loadHTMLString:html baseURL:[NSURL URLWithString:@"http://www.jeesmon.com/mb"]];
+    //+20261123 Phase 2: one <head> in both modes, with a viewport so WKWebView lays the text out at the screen
+    // width (as the old web view did) instead of 980 px scaled down. The text itself is unchanged.
+    NSString *head = [NSString stringWithFormat:@"<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>html{-webkit-text-size-adjust:100%%;}</style>%@</head>", nightStyle];
+    html = [html stringByReplacingOccurrencesOfString:@"<html>" withString:[@"<html>" stringByAppendingString:head]];
+    // No base URL: the page loads nothing relative (it was http://www.jeesmon.com/mb, which only set an http origin).
+    [self.webView loadHTMLString:html baseURL:nil];
 }
 
 - (void)viewDidUnload
@@ -89,13 +132,30 @@
     return YES;
 }
 
--(BOOL) webView:(UIWebView *)inWeb shouldStartLoadWithRequest:(NSURLRequest *)inRequest navigationType:(UIWebViewNavigationType)inType {
-    if ( inType == UIWebViewNavigationTypeLinkClicked ) {
-        [[UIApplication sharedApplication] openURL:[inRequest URL]];
-        return NO;
+#pragma mark WKNavigationDelegate (+20261123)
+
+// Same rule as before: a tapped link opens outside the app (Safari) and never in this view; now through
+// openURL:options:completionHandler:, as the old openURL: no longer opens URLs on recent iOS. The page itself
+// (loadHTMLString with no base URL, i.e. about:blank) may load; every other navigation is blocked.
+- (void)webView:(WKWebView *)aboutWebView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
+{
+    NSURL *url = navigationAction.request.URL;
+    NSString *scheme = url.scheme.lowercaseString;
+
+    if (navigationAction.navigationType == WKNavigationTypeLinkActivated) {
+        if (url != nil && ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"mailto"])) {
+            [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+        }
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
     }
-    
-    return YES;
+
+    if (navigationAction.navigationType == WKNavigationTypeOther && navigationAction.targetFrame.isMainFrame && [scheme isEqualToString:@"about"]) {
+        decisionHandler(WKNavigationActionPolicyAllow);
+        return;
+    }
+
+    decisionHandler(WKNavigationActionPolicyCancel);
 }
 
 @end
